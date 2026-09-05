@@ -30,8 +30,8 @@
  * secondary sources still describe a 12.8% final value fee for UK private
  * sellers. That predates, or ignores, eBay's 1 October 2024 change which
  * removed selling fees for private sellers on eligible domestic sales.
- * This file follows the post October 2024 position. Business is the
- * default seller type for this tool in any case.
+ * This file follows the post October 2024 position, and private is the
+ * default seller type for this tool.
  */
 
 import { applyRate, atLeastZero, sum, type Pence } from './money';
@@ -217,6 +217,17 @@ export interface FeeOptions {
    * your postage is a cost rather than a receipt.
    */
   feeBase: Pence;
+  /**
+   * The item price alone, without the postage charged to the buyer.
+   *
+   * Used ONLY to decide whether an authenticity checked category's value
+   * threshold is crossed, because eBay applies that threshold to the item
+   * price rather than the order total. A £95 watch posted for £8 is a £103
+   * order that is still under the £100 watch threshold.
+   *
+   * Fees themselves are always calculated on `feeBase`.
+   */
+  itemPricePence: Pence;
   sellerType: SellerType;
   category: CategoryKey;
   internationalSale: boolean;
@@ -263,6 +274,7 @@ export interface FeeResult {
 export function calculateFees(options: FeeOptions): FeeResult {
   const {
     feeBase,
+    itemPricePence,
     sellerType,
     category,
     internationalSale,
@@ -323,7 +335,9 @@ export function calculateFees(options: FeeOptions): FeeResult {
     vatRate = rules.vatOnFeesRate;
 
     const authenticity = profile.authenticityChecked;
-    const authenticityApplies = authenticity !== null && feeBase > authenticity.thresholdPence;
+    // Tested against the item price, not the order total: postage does not
+    // push an item over an authenticity threshold.
+    const authenticityApplies = authenticity !== null && itemPricePence > authenticity.thresholdPence;
 
     if (authenticityApplies) {
       const fvfRate = hasOverride

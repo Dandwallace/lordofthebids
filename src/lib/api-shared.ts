@@ -60,8 +60,10 @@ export function parsePreferences(raw: unknown): SellingPreferences {
 
   const override = input.finalValueFeeRateOverride;
   return {
-    // Business is the default: this is a resale workflow.
-    sellerType: pick(input.sellerType, SELLER_TYPES, 'business'),
+    // Private, matching the client default. If a request omits the
+    // seller type, falling back to business would deduct fees a private
+    // seller does not pay.
+    sellerType: pick(input.sellerType, SELLER_TYPES, 'private'),
     category: pick(input.category, CATEGORY_KEYS as CategoryKey[], 'general'),
     internationalSale: input.internationalSale === true,
     vatOnFeesIsACost: input.vatOnFeesIsACost !== false,

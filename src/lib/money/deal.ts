@@ -98,6 +98,11 @@ export function calculateDeal(input: DealInput): DealMaths {
 
   const fees = calculateFees({
     feeBase: resalePrice,
+    // The resale figure is the whole amount the buyer pays, delivery
+    // included, so the listing charges no separate postage and the item
+    // price is that same amount. Your own outbound postage is a cost, not
+    // a charge to the buyer, and so does not reduce the item price here.
+    itemPricePence: resalePrice,
     sellerType: selling.sellerType,
     category: selling.category,
     internationalSale: selling.internationalSale,
@@ -167,6 +172,8 @@ export function calculateMaxPrice(
 ): MaxPriceResult {
   const fees = calculateFees({
     feeBase: resalePrice,
+    // Same delivery-included assumption as calculateDeal above.
+    itemPricePence: resalePrice,
     sellerType: selling.sellerType,
     category: selling.category,
     internationalSale: selling.internationalSale,

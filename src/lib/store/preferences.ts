@@ -9,9 +9,14 @@ import { DEFAULT_COSTS } from '../money/deal';
 import type { SearchCriteria, SellingPreferences } from '../types';
 import { readJson, writeJson } from './storage';
 
-/** Business is the default: this app is built for a resale workflow. */
+/**
+ * Private is the default. Private sellers have paid no final value fee on
+ * eligible domestic sales since 1 October 2024, so defaulting to business
+ * would deduct fees that are not charged and understate profit on every
+ * scan. Switch to business in Settings if you sell on a business account.
+ */
 export const DEFAULT_PREFERENCES: SellingPreferences = {
-  sellerType: 'business',
+  sellerType: 'private',
   category: 'general',
   internationalSale: false,
   vatOnFeesIsACost: true,

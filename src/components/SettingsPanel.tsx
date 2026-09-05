@@ -64,8 +64,8 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
       <div className="settings-group">
         <div className="settings-group__title">How you sell</div>
         <p className="settings-group__intro">
-          This decides which eBay fees come out of your payout. Business is the default because this
-          app is built for buying to resell.
+          This decides which eBay fees come out of your payout. Private is the default, because
+          private sellers pay no final value fee on eligible domestic sales.
         </p>
 
         <div className="field" style={{ marginBottom: 16 }}>

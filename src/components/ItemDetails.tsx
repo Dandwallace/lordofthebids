@@ -14,6 +14,7 @@
 import { useMemo, useState } from 'react';
 import type { MarketReference, Opportunity } from '@/lib/market/analyse';
 import { calculateDeal, type CostAssumptions } from '@/lib/money/deal';
+import { EBAY_UK_FEE_RULES } from '@/lib/money/fees';
 import { toPence } from '@/lib/money/money';
 import type { SellingPreferences } from '@/lib/types';
 import { IconBookmark, IconExternal, IconInfo, IconWarning } from './Brand';
@@ -368,14 +369,34 @@ export default function ItemDetails({
           </div>
         </div>
 
+        {/*
+          Business category rates came from secondary references rather
+          than eBay directly, so say so where the fee is actually shown.
+          Not shown for private sellers: the nil fee position on eligible
+          domestic sales is not in doubt, and warning about it would be
+          noise.
+        */}
+        {preferences.sellerType === 'business' && shown.fees.rateConfidence === 'indicative' ? (
+          <div className="notice notice--caution" style={{ marginTop: 12 }}>
+            <span className="notice__icon">
+              <IconWarning />
+            </span>
+            <div>
+              <div className="notice__title">This category rate is unverified</div>
+              <div className="notice__body">
+                The {EBAY_UK_FEE_RULES.categories[preferences.category].label} final value fee has not
+                been confirmed against eBay directly. If you know your exact rate, set it as an
+                override in Settings.
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="rule-version" style={{ marginTop: 12 }}>
           <IconInfo size={14} />
           <span>
             Fee rules version {shown.fees.rulesVersion}, checked {shown.fees.verifiedOn}
             {shown.fees.usedOverride ? '. A manual fee rate override is in use.' : ''}
-            {shown.fees.rateConfidence === 'indicative'
-              ? '. The category rate is indicative — confirm it against eBay before relying on it.'
-              : ''}
           </span>
         </div>
       </section>

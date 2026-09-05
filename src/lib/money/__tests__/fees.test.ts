@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { EBAY_UK_FEE_RULES, calculateFees } from '../fees';
+import { EBAY_UK_FEE_RULES, calculateFees as rawCalculateFees, type FeeOptions } from '../fees';
+
+/**
+ * Most cases have no separate postage, so the item price and the order
+ * total are the same number. This lets a case state only what it cares
+ * about, and makes the cases that DO separate them obvious.
+ */
+function calculateFees(options: Omit<FeeOptions, 'itemPricePence'> & { itemPricePence?: number }) {
+  return rawCalculateFees({ itemPricePence: options.itemPricePence ?? options.feeBase, ...options });
+}
 
 const business = {
   sellerType: 'business' as const,
@@ -88,6 +97,35 @@ describe('private seller fees', () => {
     expect(over.lines.find((l) => l.key === 'fvf')!.amount).toBe(3200); // 12.8%
     expect(over.lines.find((l) => l.key === 'perOrder')!.amount).toBe(30);
     expect(over.total).toBe(3230); // consumer fees are VAT inclusive
+  });
+
+  it('tests the authenticity threshold against the item price, not the order total', () => {
+    // A £95 watch posted for £8 is a £103 order. The watch threshold is
+    // £100, and it applies to the item, so no fee is due. Charging on the
+    // order total would wrongly take 12.8% of £103.
+    const fees = calculateFees({
+      ...priv,
+      category: 'watches',
+      feeBase: 10300,
+      itemPricePence: 9500,
+    });
+
+    expect(fees.total).toBe(0);
+    expect(fees.lines).toHaveLength(0);
+  });
+
+  it('still charges when the item price alone clears the threshold', () => {
+    // £105 item, £8 postage. The item is over £100, so the fee applies,
+    // and it is charged on the full £113 order total.
+    const fees = calculateFees({
+      ...priv,
+      category: 'watches',
+      feeBase: 11300,
+      itemPricePence: 10500,
+    });
+
+    expect(fees.lines.find((l) => l.key === 'fvf')!.amount).toBe(1446); // 12.8% of £113
+    expect(fees.total).toBe(1476); // plus the £0.30 per order fee
   });
 
   it('uses each category threshold', () => {

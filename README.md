@@ -97,9 +97,17 @@ seller payout.
 
 ### Fees
 
-Business seller is the default, since this is a resale workflow. Every rate
-lives in `EBAY_UK_FEE_RULES`, versioned and dated, and any of it can be
-overridden by hand in Settings when you know your exact rate.
+Private seller is the default: private sellers have paid no final value fee
+on eligible domestic sales since 1 October 2024, so defaulting to business
+would deduct fees that are not charged. Switch to business in Settings if
+you sell on a business account. Every rate lives in `EBAY_UK_FEE_RULES`,
+versioned and dated, and any of it can be overridden by hand in Settings
+when you know your exact rate.
+
+Authenticity-checked value thresholds are tested against the **item price**,
+not the order total, because that is how eBay applies them: a £95 watch
+posted for £8 is a £103 order that stays under the £100 threshold. The fees
+themselves are still charged on the full order total.
 
 Corrections made to the previous version of this file:
 

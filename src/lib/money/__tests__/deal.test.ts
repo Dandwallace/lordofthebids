@@ -70,6 +70,7 @@ describe('calculateDeal', () => {
     const delivered = calculateDeal({ itemPrice: 0, inboundPostage: 0, resalePrice: 10000, costs, selling });
     const feesOnFullAmount = calculateFees({
       feeBase: 10000,
+      itemPricePence: 10000,
       sellerType: 'business',
       category: 'videoGamesAndConsoles',
       internationalSale: false,

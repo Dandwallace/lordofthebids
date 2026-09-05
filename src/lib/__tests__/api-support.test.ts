@@ -88,8 +88,11 @@ describe('withConcurrency', () => {
 });
 
 describe('untrusted request parsing', () => {
-  it('defaults the seller type to business for this resale workflow', () => {
-    expect(parsePreferences({}).sellerType).toBe('business');
+  it('defaults the seller type to private, matching the client default', () => {
+    // Falling back to business would deduct final value fees that a
+    // private seller has not paid on eligible domestic sales since
+    // 1 October 2024, understating profit on every result.
+    expect(parsePreferences({}).sellerType).toBe('private');
   });
 
   it('clamps hostile numbers into sane ranges', () => {

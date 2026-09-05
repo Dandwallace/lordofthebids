@@ -123,14 +123,18 @@ check('Status survives a reload', statusPressed?.trim() === 'Purchased', String(
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.getByRole('button', { name: /Settings/ }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: 'Private' }).click();
+const defaultSeller = await page.locator('.segmented button[aria-pressed="true"]').first().textContent();
+check('Seller type defaults to Private', defaultSeller?.trim() === 'Private', String(defaultSeller));
+
+// Switch away from the default, so persistence is actually proven.
+await page.getByRole('button', { name: 'Business' }).click();
 await page.waitForTimeout(200);
 await page.keyboard.press('Escape');
 await page.reload({ waitUntil: 'networkidle' });
 await page.getByRole('button', { name: /Settings/ }).click();
 await page.waitForTimeout(400);
 const sellerPressed = await page.locator('.segmented button[aria-pressed="true"]').first().textContent();
-check('Selling preferences persist', sellerPressed?.trim() === 'Private', String(sellerPressed));
+check('Selling preferences persist', sellerPressed?.trim() === 'Business', String(sellerPressed));
 
 // ---- 8. Drawer keyboard behaviour ----
 await page.keyboard.press('Escape');
@@ -170,6 +174,28 @@ await page.getByRole('button', { name: 'View example results' }).first().click()
 await page.waitForSelector('.results tbody tr');
 const refAfter = await page.locator('.summary__cell').nth(1).locator('.summary__value').textContent();
 check('Reference value is unchanged by a tighter purchase cap', refBefore === refAfter, `${refBefore} vs ${refAfter}`);
+
+// ---- 11. Unverified rate notice: business only ----
+// The browser is still on Business from the persistence check above.
+await loadExample();
+await page.locator('.cell-title__name').first().click();
+await page.waitForTimeout(400);
+const businessNotice = await page.locator('.notice__title', { hasText: 'This category rate is unverified' }).count();
+check('Business seller sees the unverified rate notice', businessNotice === 1, `${businessNotice} shown`);
+
+await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
+await page.getByRole('button', { name: /Settings/ }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'Private' }).click();
+await page.waitForTimeout(200);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+await loadExample();
+await page.locator('.cell-title__name').first().click();
+await page.waitForTimeout(400);
+const privateNotice = await page.locator('.notice__title', { hasText: 'This category rate is unverified' }).count();
+check('Private seller does not see it', privateNotice === 0, `${privateNotice} shown`);
 
 console.log('\nConsole errors:', errors.length ? errors : 'none');
 const failed = results.filter((r) => !r.pass);

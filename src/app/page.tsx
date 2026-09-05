@@ -1,5 +1,5 @@
-import Workbench from '@/components/Workbench';
+import AppShell from '@/components/AppShell';
 
 export default function Page() {
-  return <Workbench />;
+  return <AppShell />;
 }

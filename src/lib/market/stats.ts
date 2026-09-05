@@ -1,10 +1,11 @@
 /**
- * Descriptive statistics for a set of asking prices.
+ * Descriptive statistics for a set of asking prices, in integer pence.
  *
- * Active listings are asking prices, not sold prices, so the distribution
- * is noisy: job lots, broken units, spare parts listings and chancers all
- * sit in the same result set. Everything here exists to get a usable
- * reference price out of that in spite of the noise.
+ * Active listings are asking prices, not sold prices. Listings that are
+ * not the product at all are removed before this module sees them (see
+ * matching.ts); the interquartile fence here is a second pass that
+ * catches priced-wrong listings of the right product, not a substitute
+ * for reading what is being sold.
  */
 
 /**
@@ -109,50 +110,4 @@ export function percentileRankOf(sorted: number[], value: number): number {
     else break;
   }
   return ((below + equal / 2) / sorted.length) * 100;
-}
-
-export type ConfidenceLevel = 'high' | 'medium' | 'low';
-
-export interface Confidence {
-  level: ConfidenceLevel;
-  score: number;
-  reasons: string[];
-}
-
-/**
- * How much to trust the reference price, driven by sample size and by how
- * tightly the surviving prices cluster. A wide spread usually means the
- * search term is pulling in more than one product.
- */
-export function assessConfidence(distribution: Distribution): Confidence {
-  const reasons: string[] = [];
-
-  // Sample size: 12 comparable listings is thin, 60 is plenty.
-  const sizeScore = Math.max(0, Math.min(1, (distribution.count - 12) / 48));
-  if (distribution.count < 12) {
-    reasons.push(`Only ${distribution.count} comparable listings after trimming outliers.`);
-  } else if (distribution.count < 30) {
-    reasons.push(`${distribution.count} comparable listings, a workable but modest sample.`);
-  } else {
-    reasons.push(`${distribution.count} comparable listings.`);
-  }
-
-  // Spread: an IQR under 30% of the median is tight, over 100% is a mess.
-  const spreadScore = Math.max(0, Math.min(1, (1.0 - distribution.dispersion) / 0.7));
-  if (distribution.dispersion > 1.0) {
-    reasons.push('Prices are spread very widely, the search is probably mixing different items.');
-  } else if (distribution.dispersion > 0.5) {
-    reasons.push('Prices are fairly spread out, consider a more specific search term.');
-  } else {
-    reasons.push('Prices cluster tightly, the search looks like one product.');
-  }
-
-  if (distribution.trimmedCount > 0) {
-    reasons.push(`${distribution.trimmedCount} outlier listings excluded by the interquartile fence.`);
-  }
-
-  const score = sizeScore * 0.6 + spreadScore * 0.4;
-  const level: ConfidenceLevel = score >= 0.66 ? 'high' : score >= 0.33 ? 'medium' : 'low';
-
-  return { level, score, reasons };
 }

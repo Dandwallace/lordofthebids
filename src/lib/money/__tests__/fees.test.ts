@@ -1,0 +1,105 @@
+import { describe, expect, it } from 'vitest';
+import { EBAY_UK_FEE_RULES, calculateFees } from '../fees';
+
+const business = {
+  sellerType: 'business' as const,
+  category: 'general' as const,
+  internationalSale: false,
+  vatOnFeesIsACost: true,
+};
+
+describe('business seller fees', () => {
+  it('charges the final value fee on the full order total, postage included', () => {
+    // £40 item + £5 postage. The fee base is £45, not £40.
+    const fees = calculateFees({ ...business, feeBase: 4500 });
+    const fvf = fees.lines.find((line) => line.key === 'fvf')!;
+    expect(fvf.amount).toBe(581); // 12.9% of £45 = £5.805 -> 581p
+
+    const wrongBase = calculateFees({ ...business, feeBase: 4000 });
+    expect(wrongBase.lines.find((l) => l.key === 'fvf')!.amount).toBe(516);
+    // Charging on the item alone would understate the fee by 65p.
+    expect(fvf.amount - wrongBase.lines.find((l) => l.key === 'fvf')!.amount).toBe(65);
+  });
+
+  it('bands the per order fee at £10', () => {
+    expect(calculateFees({ ...business, feeBase: 1000 }).lines.find((l) => l.key === 'perOrder')!.amount).toBe(30);
+    expect(calculateFees({ ...business, feeBase: 1001 }).lines.find((l) => l.key === 'perOrder')!.amount).toBe(40);
+  });
+
+  it('adds the regulatory fee and 20% VAT on everything', () => {
+    const fees = calculateFees({ ...business, feeBase: 10000 });
+    // 12.9% = 1290, per order 40, regulatory 0.35% = 35 -> subtotal 1365
+    expect(fees.subtotal).toBe(1365);
+    expect(fees.vat).toBe(273); // 20%
+    expect(fees.total).toBe(1638);
+  });
+
+  it('excludes VAT from the cost when it is reclaimable', () => {
+    const reclaimable = calculateFees({ ...business, feeBase: 10000, vatOnFeesIsACost: false });
+    expect(reclaimable.vat).toBe(273); // still reported
+    expect(reclaimable.total).toBe(1365); // but not deducted
+  });
+
+  it('adds the international fee only when asked', () => {
+    const domestic = calculateFees({ ...business, feeBase: 10000 });
+    const abroad = calculateFees({ ...business, feeBase: 10000, internationalSale: true });
+    expect(abroad.total - domestic.total).toBe(360); // 3% of £100 + VAT
+  });
+
+  it('honours an explicit manual override and marks it', () => {
+    const fees = calculateFees({ ...business, feeBase: 10000, finalValueFeeRateOverride: 0.08 });
+    expect(fees.lines.find((l) => l.key === 'fvf')!.amount).toBe(800);
+    expect(fees.usedOverride).toBe(true);
+    expect(fees.rateConfidence).toBe('confirmed');
+  });
+
+  it('reports which rule version produced the numbers', () => {
+    const fees = calculateFees({ ...business, feeBase: 10000 });
+    expect(fees.rulesVersion).toBe(EBAY_UK_FEE_RULES.version);
+    expect(fees.verifiedOn).toBe(EBAY_UK_FEE_RULES.verifiedOn);
+  });
+});
+
+describe('private seller fees', () => {
+  const priv = {
+    sellerType: 'private' as const,
+    category: 'general' as const,
+    internationalSale: false,
+    vatOnFeesIsACost: true,
+  };
+
+  it('charges nothing on an eligible domestic sale', () => {
+    const fees = calculateFees({ ...priv, feeBase: 10000 });
+    expect(fees.total).toBe(0);
+    expect(fees.lines).toHaveLength(0);
+  });
+
+  it('never deducts the buyer protection fee', () => {
+    expect(EBAY_UK_FEE_RULES.private.buyerProtectionFeeDeducted).toBe(false);
+    const fees = calculateFees({ ...priv, feeBase: 50000 });
+    expect(fees.lines.some((l) => /buyer protection/i.test(l.label))).toBe(false);
+  });
+
+  it('charges in authenticity checked categories above the threshold', () => {
+    const under = calculateFees({ ...priv, category: 'watches', feeBase: 9900 });
+    expect(under.total).toBe(0);
+
+    const over = calculateFees({ ...priv, category: 'watches', feeBase: 25000 });
+    expect(over.lines.find((l) => l.key === 'fvf')!.amount).toBe(3200); // 12.8%
+    expect(over.lines.find((l) => l.key === 'perOrder')!.amount).toBe(30);
+    expect(over.total).toBe(3230); // consumer fees are VAT inclusive
+  });
+
+  it('uses each category threshold', () => {
+    // Handbags only bite above £500, cards above £150.
+    expect(calculateFees({ ...priv, category: 'designerHandbags', feeBase: 49900 }).total).toBe(0);
+    expect(calculateFees({ ...priv, category: 'designerHandbags', feeBase: 60000 }).total).toBeGreaterThan(0);
+    expect(calculateFees({ ...priv, category: 'tradingCards', feeBase: 14900 }).total).toBe(0);
+    expect(calculateFees({ ...priv, category: 'tradingCards', feeBase: 20000 }).total).toBeGreaterThan(0);
+  });
+
+  it('charges 3% on international sales', () => {
+    const fees = calculateFees({ ...priv, feeBase: 10000, internationalSale: true });
+    expect(fees.total).toBe(300);
+  });
+});

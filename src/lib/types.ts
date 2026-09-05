@@ -1,105 +1,85 @@
 /**
- * The contract between the API route and the page. Nothing here may
- * import server only modules, the client bundle reads these types.
+ * The contract between the server and the browser.
+ *
+ * Nothing here may import a server only module. Money crosses this
+ * boundary as integer pence, exactly as it is calculated, so the client
+ * never re-does arithmetic on floating point pounds.
  */
 
-import type { CategoryKey, SellerType, FeeBreakdown } from './pricing/fees';
-import type { ConfidenceLevel } from './pricing/stats';
+import type { CategoryKey, SellerType } from './money/fees';
+import type { CostAssumptions } from './money/deal';
+import type { BuyingFormat, ConditionFilter, DeliveryPreference, SearchDepth } from './ebay/browse-types';
+import type { AnalysisResult } from './market/analyse';
 
-export type { CategoryKey, SellerType, FeeBreakdown, ConfidenceLevel };
+export type { CategoryKey, SellerType, CostAssumptions };
+export type { BuyingFormat, ConditionFilter, DeliveryPreference, SearchDepth };
+export type { AnalysisResult };
 
-export type ConditionFilter = 'any' | 'new' | 'refurbished' | 'used' | 'parts';
-
-/** Everything the left hand panel collects. */
-export interface SearchSettings {
-  query: string;
-  condition: ConditionFilter;
-  minPrice: number | null;
-  maxPrice: number | null;
-  /** 1 to 5. Each page is one Browse API call and up to 200 listings. */
-  pages: number;
+/** How you sell. Lives in Settings and rarely changes. */
+export interface SellingPreferences {
   sellerType: SellerType;
   category: CategoryKey;
   internationalSale: boolean;
-  /** What it costs you to post and pack the item when you resell it. */
-  postageAndPackaging: number;
-  /** Hide anything that nets less than this. */
-  minProfit: number;
-  /** Hide anything returning less than this percentage on outlay. */
-  minReturnPct: number;
+  /** VAT registered businesses can usually reclaim VAT on eBay fees. */
+  vatOnFeesIsACost: boolean;
+  /** Explicit override when the exact category rate is not known. */
+  finalValueFeeRateOverride: number | null;
+  costs: CostAssumptions;
 }
 
-export type RiskFlagKind = 'auction' | 'lowFeedback' | 'suspiciouslyCheap' | 'noFeedback' | 'overseas';
-
-export interface RiskFlag {
-  kind: RiskFlagKind;
-  label: string;
-  detail: string;
-  severity: 'warning' | 'danger';
+/** What you are looking for. Changes constantly. */
+export interface SearchCriteria {
+  /** The most you will pay for an item. Never sent to eBay as a filter. */
+  maxPurchasePricePence: number | null;
+  minProfitPence: number;
+  minRoi: number;
+  condition: ConditionFilter;
+  buyingFormat: BuyingFormat;
+  delivery: DeliveryPreference;
+  depth: SearchDepth;
+  /** Words that disqualify a listing, applied to titles. */
+  excludeTerms: string;
+  /** Optional bounds on the comparison set itself, for odd markets. */
+  referenceMinPricePence: number | null;
+  referenceMaxPricePence: number | null;
 }
 
-export interface Deal {
-  itemId: string;
-  title: string;
-  url: string;
-  imageUrl: string | null;
-  condition: string | null;
-  /** Listing price only. */
-  price: number;
-  /** Postage the buyer pays, 0 when free, null when eBay did not say. */
-  shippingCost: number | null;
-  /** price + shipping, what it costs you to get the item in hand. */
-  buyCost: number;
-  buyingFormat: 'fixed' | 'auction' | 'both';
-  bidCount: number | null;
-  sellerUsername: string | null;
-  sellerFeedbackScore: number | null;
-  sellerFeedbackPercentage: number | null;
-  /** Where this listing sits in the trimmed distribution, 0 to 100. */
-  percentileRank: number;
-  /** The 40th percentile resale assumption. */
-  assumedResale: number;
-  /** How far below the reference price the buy cost sits, as a percentage. */
-  belowMarketPct: number;
-  fees: FeeBreakdown;
-  /** resale - fees - buy cost - your postage and packaging. */
-  netProfit: number;
-  /** netProfit as a percentage of total outlay. */
-  returnPct: number;
-  riskFlags: RiskFlag[];
-}
-
-export interface MarketSummary {
-  /** Listings pulled from eBay before any filtering. */
-  listingsScanned: number;
-  /** Listings that had a usable price and formed the comparison set. */
-  comparableListings: number;
-  outliersTrimmed: number;
-  /** eBay's total count of matching listings, which may exceed what we pulled. */
-  totalMatchingOnEbay: number;
-  median: number;
-  /** The 40th percentile, used as the resale assumption. */
-  referencePrice: number;
-  q1: number;
-  q3: number;
-  min: number;
-  max: number;
-  confidence: {
-    level: ConfidenceLevel;
-    score: number;
-    reasons: string[];
-  };
+export interface SearchMeta {
   apiCallsUsed: number;
+  fromCache: boolean;
+  totalMatchingOnEbay: number;
+  fetchedAt: string;
   warnings: string[];
+  excludedByTerms: number;
 }
 
-export interface AnalysisResponse {
-  summary: MarketSummary;
-  deals: Deal[];
-  /** Listings below Q1 that were then filtered out by the profit thresholds. */
-  belowThresholdCount: number;
+export interface SearchResponse {
+  analysis: AnalysisResult;
+  meta: SearchMeta;
+  /** True when this came from bundled example data, not eBay. */
+  isExample: boolean;
 }
 
-export interface ApiErrorResponse {
+export interface ConnectionStatus {
+  configured: boolean;
+  environment: 'production' | 'sandbox';
+  marketplaceId: string;
+  deletionEndpointConfigured: boolean;
+  checkedAt: string;
+}
+
+export interface ApiError {
   error: string;
+  recovery: string;
+  kind: string;
+}
+
+/** A single item's full detail, for the drawer. */
+export interface ItemDetailResponse {
+  analysisItem: AnalysisResult;
+  descriptionText: string;
+  aspects: { name: string; value: string }[];
+  additionalImages: string[];
+  returnsAccepted: boolean | null;
+  isExample: boolean;
 }

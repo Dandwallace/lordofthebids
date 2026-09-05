@@ -1,0 +1,332 @@
+'use client';
+
+/**
+ * Selling preferences and technical settings, kept out of the main
+ * workspace because they are set once and then rarely touched.
+ */
+
+import { EBAY_UK_FEE_RULES, CATEGORY_KEYS, type CategoryKey } from '@/lib/money/fees';
+import type { ConnectionStatus, SellingPreferences } from '@/lib/types';
+import { toPence, toPounds } from '@/lib/money/money';
+import { IconInfo } from './Brand';
+import { formatDateTime } from './format';
+
+interface Props {
+  preferences: SellingPreferences;
+  onChange: (patch: Partial<SellingPreferences>) => void;
+  connection: ConnectionStatus | null;
+  lastRefreshedAt: string | null;
+}
+
+function MoneyField({
+  id,
+  label,
+  hint,
+  pence,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  pence: number;
+  onChange: (pence: number) => void;
+}) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <div className="input-prefix">
+        <span className="input-prefix__symbol">£</span>
+        <input
+          id={id}
+          type="number"
+          min="0"
+          step="0.01"
+          inputMode="decimal"
+          value={toPounds(pence)}
+          onChange={(event) => onChange(toPence(Number(event.target.value) || 0))}
+        />
+      </div>
+      {hint ? <p className="field__hint">{hint}</p> : null}
+    </div>
+  );
+}
+
+export default function SettingsPanel({ preferences, onChange, connection, lastRefreshedAt }: Props) {
+  const costs = preferences.costs;
+
+  function patchCosts(patch: Partial<SellingPreferences['costs']>) {
+    onChange({ costs: { ...costs, ...patch } });
+  }
+
+  return (
+    <div className="stack" style={{ gap: 24 }}>
+      {/* --- How you sell ---------------------------------------------- */}
+      <div className="settings-group">
+        <div className="settings-group__title">How you sell</div>
+        <p className="settings-group__intro">
+          This decides which eBay fees come out of your payout. Business is the default because this
+          app is built for buying to resell.
+        </p>
+
+        <div className="field" style={{ marginBottom: 16 }}>
+          <span className="field__label" id="seller-type-label">
+            Seller type
+          </span>
+          <div className="segmented segmented--block" role="group" aria-labelledby="seller-type-label">
+            <button
+              type="button"
+              aria-pressed={preferences.sellerType === 'business'}
+              onClick={() => onChange({ sellerType: 'business' })}
+            >
+              Business
+            </button>
+            <button
+              type="button"
+              aria-pressed={preferences.sellerType === 'private'}
+              onClick={() => onChange({ sellerType: 'private' })}
+            >
+              Private
+            </button>
+          </div>
+          <p className="field__hint">
+            {preferences.sellerType === 'business'
+              ? 'A category final value fee, a per order fee, a 0.35% regulatory fee, and 20% VAT on all of them.'
+              : 'No selling fees on eligible domestic sales since 1 October 2024. The Buyer Protection fee is paid by the buyer, so it is never deducted here. Authenticity checked categories and international sales still carry a fee.'}
+          </p>
+        </div>
+
+        <div className="field" style={{ marginBottom: 16 }}>
+          <label htmlFor="category">Category</label>
+          <select
+            id="category"
+            value={preferences.category}
+            onChange={(event) => onChange({ category: event.target.value as CategoryKey })}
+          >
+            {CATEGORY_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {EBAY_UK_FEE_RULES.categories[key].label}
+              </option>
+            ))}
+          </select>
+          <p className="field__hint">
+            Sets the final value fee rate. Change it per search if you scan across different kinds of item.
+          </p>
+        </div>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={preferences.vatOnFeesIsACost}
+            onChange={(event) => onChange({ vatOnFeesIsACost: event.target.checked })}
+          />
+          <span className="check__text">
+            Treat VAT on fees as a cost
+            <small>
+              Turn this off if you are VAT registered and reclaim it. VAT is still shown, just not deducted.
+            </small>
+          </span>
+        </label>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={preferences.internationalSale}
+            onChange={(event) => onChange({ internationalSale: event.target.checked })}
+          />
+          <span className="check__text">
+            Assume an international sale
+            <small>Adds the 3% international fee to every calculation.</small>
+          </span>
+        </label>
+
+        <div className="field" style={{ marginTop: 8 }}>
+          <label htmlFor="fvf-override">Final value fee override</label>
+          <div className="input-suffix">
+            <span className="input-suffix__symbol">%</span>
+            <input
+              id="fvf-override"
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              inputMode="decimal"
+              placeholder="Use the category rate"
+              value={
+                preferences.finalValueFeeRateOverride === null
+                  ? ''
+                  : (preferences.finalValueFeeRateOverride * 100).toFixed(1)
+              }
+              onChange={(event) => {
+                const raw = event.target.value.trim();
+                if (raw === '') return onChange({ finalValueFeeRateOverride: null });
+                const parsed = Number(raw);
+                onChange({
+                  finalValueFeeRateOverride:
+                    Number.isFinite(parsed) && parsed >= 0 && parsed <= 50 ? parsed / 100 : null,
+                });
+              }}
+            />
+          </div>
+          <p className="field__hint">
+            If you know your exact rate, put it here. Results calculated with an override say so.
+          </p>
+        </div>
+
+        <div className="rule-version" style={{ marginTop: 12 }}>
+          <IconInfo size={14} />
+          <span>
+            Fee rules {EBAY_UK_FEE_RULES.version}, checked {EBAY_UK_FEE_RULES.verifiedOn}.{' '}
+            {EBAY_UK_FEE_RULES.verifiedAgainst}
+          </span>
+        </div>
+      </div>
+
+      {/* --- Your costs -------------------------------------------------- */}
+      <div className="settings-group">
+        <div className="settings-group__title">Your costs per item</div>
+        <p className="settings-group__intro">
+          Everything you pay out beyond the item itself. These are deducted from every calculation.
+        </p>
+
+        <div className="grid-2">
+          <MoneyField
+            id="outbound"
+            label="Postage out"
+            pence={costs.outboundPostage}
+            onChange={(value) => patchCosts({ outboundPostage: value })}
+          />
+          <MoneyField
+            id="packaging"
+            label="Packaging"
+            pence={costs.packaging}
+            onChange={(value) => patchCosts({ packaging: value })}
+          />
+          <MoneyField
+            id="preparation"
+            label="Preparation"
+            hint="Cleaning, batteries, cables."
+            pence={costs.preparation}
+            onChange={(value) => patchCosts({ preparation: value })}
+          />
+          <MoneyField
+            id="repair"
+            label="Repair allowance"
+            hint="Optional, for items you expect to fix."
+            pence={costs.repairAllowance}
+            onChange={(value) => patchCosts({ repairAllowance: value })}
+          />
+        </div>
+
+        <div className="field" style={{ marginTop: 16 }}>
+          <label htmlFor="loss">Loss allowance</label>
+          <div className="input-suffix">
+            <span className="input-suffix__symbol">%</span>
+            <input
+              id="loss"
+              type="number"
+              min="0"
+              max="90"
+              step="1"
+              inputMode="numeric"
+              value={Math.round(costs.lossAllowanceRate * 100)}
+              onChange={(event) => {
+                const parsed = Number(event.target.value);
+                patchCosts({
+                  lossAllowanceRate: Number.isFinite(parsed) ? Math.min(0.9, Math.max(0, parsed / 100)) : 0,
+                });
+              }}
+            />
+          </div>
+          <p className="field__hint">
+            A share of the resale value set aside for returns, damage and items that never sell. Not all
+            of them will work out.
+          </p>
+        </div>
+      </div>
+
+      {/* --- Data sources ------------------------------------------------ */}
+      <div className="settings-group">
+        <div className="settings-group__title">Data sources</div>
+        <p className="settings-group__intro">
+          What this app is allowed to use, and what it therefore cannot tell you.
+        </p>
+
+        <div className="breakdown">
+          <div className="breakdown__row">
+            <span className="breakdown__label">
+              eBay Browse API
+              <span className="breakdown__basis">Active listings. This is the only live source in use.</span>
+            </span>
+            <span className="breakdown__value">
+              <span className={`badge ${connection?.configured ? 'badge--positive' : 'badge--negative'}`}>
+                {connection?.configured ? 'Connected' : 'Not set up'}
+              </span>
+            </span>
+          </div>
+          <div className="breakdown__row">
+            <span className="breakdown__label">
+              Sold prices and demand
+              <span className="breakdown__basis">
+                eBay&rsquo;s Marketplace Insights API is a limited release and is not available to this app,
+                so no sold price, sell through rate or selling time is shown anywhere.
+              </span>
+            </span>
+            <span className="breakdown__value">
+              <span className="badge badge--neutral">Unavailable</span>
+            </span>
+          </div>
+          <div className="breakdown__row">
+            <span className="breakdown__label">
+              Third party research tools
+              <span className="breakdown__basis">
+                Not connected. A subscription to a research tool does not by itself grant the right to
+                pull its data into another application, so none is used until that permission is
+                established in writing.
+              </span>
+            </span>
+            <span className="breakdown__value">
+              <span className="badge badge--neutral">Not connected</span>
+            </span>
+          </div>
+          <div className="breakdown__row">
+            <span className="breakdown__label">
+              Automated AI analysis of listings
+              <span className="breakdown__basis">
+                Off. Listing text is scanned for known phrases by fixed rules only, and is never sent to
+                an external model.
+              </span>
+            </span>
+            <span className="breakdown__value">
+              <span className="badge badge--neutral">Off</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* --- Connection --------------------------------------------------- */}
+      <div className="settings-group">
+        <div className="settings-group__title">Connection</div>
+        <div className="breakdown">
+          <div className="breakdown__row">
+            <span className="breakdown__label">Environment</span>
+            <span className="breakdown__value">{connection?.environment ?? 'unknown'}</span>
+          </div>
+          <div className="breakdown__row">
+            <span className="breakdown__label">Marketplace</span>
+            <span className="breakdown__value">{connection?.marketplaceId ?? 'EBAY_GB'}</span>
+          </div>
+          <div className="breakdown__row">
+            <span className="breakdown__label">Last successful refresh</span>
+            <span className="breakdown__value">
+              {lastRefreshedAt ? formatDateTime(lastRefreshedAt) : 'not yet'}
+            </span>
+          </div>
+        </div>
+        <p className="field__hint" style={{ marginTop: 12 }}>
+          Searches are cached for ten minutes and pagination is handled automatically, so repeating a
+          scan usually costs no extra calls against the shared daily allowance.
+        </p>
+      </div>
+    </div>
+  );
+}

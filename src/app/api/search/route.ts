@@ -57,6 +57,7 @@ export async function POST(request: Request) {
 
   try {
     const search = await searchActiveListings({
+      marketplaceId: preferences.marketplaceId,
       query,
       condition: criteria.condition,
       buyingFormat: criteria.buyingFormat,
@@ -80,7 +81,8 @@ export async function POST(request: Request) {
       query,
       costs: preferences.costs,
       selling: {
-        sellerType: preferences.sellerType,
+        marketplaceId: preferences.marketplaceId,
+      sellerType: preferences.sellerType,
         category: preferences.category,
         internationalSale: preferences.internationalSale,
         vatOnFeesIsACost: preferences.vatOnFeesIsACost,

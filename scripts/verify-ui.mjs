@@ -123,7 +123,8 @@ check('Status survives a reload', statusPressed?.trim() === 'Purchased', String(
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.getByRole('button', { name: /Settings/ }).click();
 await page.waitForTimeout(300);
-const defaultSeller = await page.locator('.segmented button[aria-pressed="true"]').first().textContent();
+const SELLER_GROUP = '[aria-labelledby="seller-type-label"] button[aria-pressed="true"]';
+const defaultSeller = await page.locator(SELLER_GROUP).first().textContent();
 check('Seller type defaults to Private', defaultSeller?.trim() === 'Private', String(defaultSeller));
 
 // Switch away from the default, so persistence is actually proven.
@@ -133,7 +134,7 @@ await page.keyboard.press('Escape');
 await page.reload({ waitUntil: 'networkidle' });
 await page.getByRole('button', { name: /Settings/ }).click();
 await page.waitForTimeout(400);
-const sellerPressed = await page.locator('.segmented button[aria-pressed="true"]').first().textContent();
+const sellerPressed = await page.locator(SELLER_GROUP).first().textContent();
 check('Selling preferences persist', sellerPressed?.trim() === 'Business', String(sellerPressed));
 
 // ---- 8. Drawer keyboard behaviour ----

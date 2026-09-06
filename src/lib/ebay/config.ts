@@ -7,6 +7,7 @@
  */
 
 import 'server-only';
+import { toMarketplaceId, type MarketplaceId } from './marketplaces';
 
 export type EbayEnvironment = 'production' | 'sandbox';
 
@@ -27,8 +28,12 @@ export function ebayApiBase(): string {
   return ebayEnvironment() === 'sandbox' ? 'https://api.sandbox.ebay.com' : 'https://api.ebay.com';
 }
 
-export function ebayMarketplaceId(): string {
-  return process.env.EBAY_MARKETPLACE_ID || 'EBAY_GB';
+/**
+ * The default marketplace, from the environment. A request may override
+ * it per search, so this is only the fallback.
+ */
+export function ebayMarketplaceId(): MarketplaceId {
+  return toMarketplaceId(process.env.EBAY_MARKETPLACE_ID);
 }
 
 /**

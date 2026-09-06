@@ -16,6 +16,8 @@ import { readJson, writeJson } from './storage';
  * scan. Switch to business in Settings if you sell on a business account.
  */
 export const DEFAULT_PREFERENCES: SellingPreferences = {
+  marketplaceId: 'EBAY_GB',
+  language: 'en',
   sellerType: 'private',
   category: 'general',
   internationalSale: false,

@@ -5,10 +5,13 @@
  * workspace because they are set once and then rarely touched.
  */
 
-import { EBAY_UK_FEE_RULES, CATEGORY_KEYS, type CategoryKey } from '@/lib/money/fees';
+import { CATEGORY_KEYS, feeRulesFor, type CategoryKey } from '@/lib/money/fees';
 import type { ConnectionStatus, SellingPreferences } from '@/lib/types';
 import { toPence, toPounds } from '@/lib/money/money';
-import { IconInfo } from './Brand';
+import { IconInfo, IconWarning } from './Brand';
+import { useLocale } from '@/lib/i18n/context';
+import { LANGUAGES } from '@/lib/i18n/dictionary';
+import { MARKETPLACES, MARKETPLACE_IDS, type MarketplaceId } from '@/lib/ebay/marketplaces';
 import { formatDateTime } from './format';
 
 interface Props {
@@ -24,7 +27,9 @@ function MoneyField({
   hint,
   pence,
   onChange,
+  symbol,
 }: {
+  symbol: string;
   id: string;
   label: string;
   hint?: string;
@@ -35,7 +40,7 @@ function MoneyField({
     <div className="field">
       <label htmlFor={id}>{label}</label>
       <div className="input-prefix">
-        <span className="input-prefix__symbol">£</span>
+        <span className="input-prefix__symbol">{symbol}</span>
         <input
           id={id}
           type="number"
@@ -52,6 +57,8 @@ function MoneyField({
 }
 
 export default function SettingsPanel({ preferences, onChange, connection, lastRefreshedAt }: Props) {
+  const { t, site } = useLocale();
+  const rules = feeRulesFor(preferences.marketplaceId);
   const costs = preferences.costs;
 
   function patchCosts(patch: Partial<SellingPreferences['costs']>) {
@@ -60,17 +67,66 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
 
   return (
     <div className="stack" style={{ gap: 24 }}>
+      {/* --- Marketplace ------------------------------------------------ */}
+      <div className="settings-group">
+        <div className="settings-group__title">{t('settings.marketplace')}</div>
+        <p className="settings-group__intro">{t('settings.marketplaceIntro')}</p>
+
+        <div className="field">
+          <label className="visually-hidden" htmlFor="marketplace">
+            {t('settings.marketplace')}
+          </label>
+          <select
+            id="marketplace"
+            value={preferences.marketplaceId}
+            onChange={(event) => onChange({ marketplaceId: event.target.value as MarketplaceId })}
+          >
+            {MARKETPLACE_IDS.map((id) => (
+              <option key={id} value={id}>
+                {MARKETPLACES[id].label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="notice notice--caution" style={{ marginTop: 12 }}>
+          <span className="notice__icon">
+            <IconWarning />
+          </span>
+          <div>
+            <div className="notice__title">{t('settings.marketplaceWarning')}</div>
+            <div className="notice__body">{t('settings.marketplaceWarningBody')}</div>
+          </div>
+        </div>
+
+        <div className="field" style={{ marginTop: 16 }}>
+          <span className="field__label" id="language-label">
+            {t('settings.language')}
+          </span>
+          <div className="segmented segmented--block" role="group" aria-labelledby="language-label">
+            {LANGUAGES.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={preferences.language === option.id}
+                onClick={() => onChange({ language: option.id })}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="field__hint">{t('settings.languageIntro')}</p>
+        </div>
+      </div>
+
       {/* --- How you sell ---------------------------------------------- */}
       <div className="settings-group">
-        <div className="settings-group__title">How you sell</div>
-        <p className="settings-group__intro">
-          This decides which eBay fees come out of your payout. Private is the default, because
-          private sellers pay no final value fee on eligible domestic sales.
-        </p>
+        <div className="settings-group__title">{t('settings.howYouSell')}</div>
+        <p className="settings-group__intro">{t('settings.howYouSellIntro')}</p>
 
         <div className="field" style={{ marginBottom: 16 }}>
           <span className="field__label" id="seller-type-label">
-            Seller type
+            {t('settings.sellerType')}
           </span>
           <div className="segmented segmented--block" role="group" aria-labelledby="seller-type-label">
             <button
@@ -78,14 +134,14 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
               aria-pressed={preferences.sellerType === 'business'}
               onClick={() => onChange({ sellerType: 'business' })}
             >
-              Business
+              {t('settings.business')}
             </button>
             <button
               type="button"
               aria-pressed={preferences.sellerType === 'private'}
               onClick={() => onChange({ sellerType: 'private' })}
             >
-              Private
+              {t('settings.private')}
             </button>
           </div>
           <p className="field__hint">
@@ -96,7 +152,7 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
         </div>
 
         <div className="field" style={{ marginBottom: 16 }}>
-          <label htmlFor="category">Category</label>
+          <label htmlFor="category">{t('settings.category')}</label>
           <select
             id="category"
             value={preferences.category}
@@ -104,13 +160,11 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
           >
             {CATEGORY_KEYS.map((key) => (
               <option key={key} value={key}>
-                {EBAY_UK_FEE_RULES.categories[key].label}
+                {rules.categories[key].label}
               </option>
             ))}
           </select>
-          <p className="field__hint">
-            Sets the final value fee rate. Change it per search if you scan across different kinds of item.
-          </p>
+          <p className="field__hint">{t('settings.categoryHint')}</p>
         </div>
 
         <label className="check">
@@ -120,10 +174,8 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
             onChange={(event) => onChange({ vatOnFeesIsACost: event.target.checked })}
           />
           <span className="check__text">
-            Treat VAT on fees as a cost
-            <small>
-              Turn this off if you are VAT registered and reclaim it. VAT is still shown, just not deducted.
-            </small>
+            {t('settings.vatCost')}
+            <small>{t('settings.vatCostHint')}</small>
           </span>
         </label>
 
@@ -134,13 +186,13 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
             onChange={(event) => onChange({ internationalSale: event.target.checked })}
           />
           <span className="check__text">
-            Assume an international sale
-            <small>Adds the 3% international fee to every calculation.</small>
+            {t('settings.international')}
+            <small>{t('settings.internationalHint')}</small>
           </span>
         </label>
 
         <div className="field" style={{ marginTop: 8 }}>
-          <label htmlFor="fvf-override">Final value fee override</label>
+          <label htmlFor="fvf-override">{t('settings.feeOverride')}</label>
           <div className="input-suffix">
             <span className="input-suffix__symbol">%</span>
             <input
@@ -150,7 +202,7 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
               max="50"
               step="0.1"
               inputMode="decimal"
-              placeholder="Use the category rate"
+              placeholder={t('settings.useCategoryRate')}
               value={
                 preferences.finalValueFeeRateOverride === null
                   ? ''
@@ -167,58 +219,57 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
               }}
             />
           </div>
-          <p className="field__hint">
-            If you know your exact rate, put it here. Results calculated with an override say so.
-          </p>
+          <p className="field__hint">{t('settings.feeOverrideHint')}</p>
         </div>
 
         <div className="rule-version" style={{ marginTop: 12 }}>
           <IconInfo size={14} />
           <span>
-            Fee rules {EBAY_UK_FEE_RULES.version}, checked {EBAY_UK_FEE_RULES.verifiedOn}.{' '}
-            {EBAY_UK_FEE_RULES.verifiedAgainst}
+            {site.id} · {rules.version}, {rules.verifiedOn}. {rules.verifiedAgainst}
           </span>
         </div>
       </div>
 
       {/* --- Your costs -------------------------------------------------- */}
       <div className="settings-group">
-        <div className="settings-group__title">Your costs per item</div>
-        <p className="settings-group__intro">
-          Everything you pay out beyond the item itself. These are deducted from every calculation.
-        </p>
+        <div className="settings-group__title">{t('settings.yourCosts')}</div>
+        <p className="settings-group__intro">{t('settings.yourCostsIntro')}</p>
 
         <div className="grid-2">
           <MoneyField
             id="outbound"
-            label="Postage out"
+            symbol={site.currencySymbol}
+            label={t('settings.postageOut')}
             pence={costs.outboundPostage}
             onChange={(value) => patchCosts({ outboundPostage: value })}
           />
           <MoneyField
             id="packaging"
-            label="Packaging"
+            symbol={site.currencySymbol}
+            label={t('settings.packaging')}
             pence={costs.packaging}
             onChange={(value) => patchCosts({ packaging: value })}
           />
           <MoneyField
             id="preparation"
-            label="Preparation"
-            hint="Cleaning, batteries, cables."
+            symbol={site.currencySymbol}
+            label={t('settings.preparation')}
+            hint={t('settings.preparationHint')}
             pence={costs.preparation}
             onChange={(value) => patchCosts({ preparation: value })}
           />
           <MoneyField
             id="repair"
-            label="Repair allowance"
-            hint="Optional, for items you expect to fix."
+            symbol={site.currencySymbol}
+            label={t('settings.repair')}
+            hint={t('settings.repairHint')}
             pence={costs.repairAllowance}
             onChange={(value) => patchCosts({ repairAllowance: value })}
           />
         </div>
 
         <div className="field" style={{ marginTop: 16 }}>
-          <label htmlFor="loss">Loss allowance</label>
+          <label htmlFor="loss">{t('settings.lossAllowance')}</label>
           <div className="input-suffix">
             <span className="input-suffix__symbol">%</span>
             <input
@@ -237,19 +288,14 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
               }}
             />
           </div>
-          <p className="field__hint">
-            A share of the resale value set aside for returns, damage and items that never sell. Not all
-            of them will work out.
-          </p>
+          <p className="field__hint">{t('settings.lossAllowanceHint')}</p>
         </div>
       </div>
 
       {/* --- Data sources ------------------------------------------------ */}
       <div className="settings-group">
-        <div className="settings-group__title">Data sources</div>
-        <p className="settings-group__intro">
-          What this app is allowed to use, and what it therefore cannot tell you.
-        </p>
+        <div className="settings-group__title">{t('settings.dataSources')}</div>
+        <p className="settings-group__intro">{t('settings.dataSourcesIntro')}</p>
 
         <div className="breakdown">
           <div className="breakdown__row">
@@ -305,20 +351,20 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
 
       {/* --- Connection --------------------------------------------------- */}
       <div className="settings-group">
-        <div className="settings-group__title">Connection</div>
+        <div className="settings-group__title">{t('settings.connection')}</div>
         <div className="breakdown">
           <div className="breakdown__row">
-            <span className="breakdown__label">Environment</span>
+            <span className="breakdown__label">{t('settings.environment')}</span>
             <span className="breakdown__value">{connection?.environment ?? 'unknown'}</span>
           </div>
           <div className="breakdown__row">
             <span className="breakdown__label">Marketplace</span>
-            <span className="breakdown__value">{connection?.marketplaceId ?? 'EBAY_GB'}</span>
+            <span className="breakdown__value">{site.id}</span>
           </div>
           <div className="breakdown__row">
-            <span className="breakdown__label">Last successful refresh</span>
+            <span className="breakdown__label">{t('settings.lastRefresh')}</span>
             <span className="breakdown__value">
-              {lastRefreshedAt ? formatDateTime(lastRefreshedAt) : 'not yet'}
+              {lastRefreshedAt ? formatDateTime(lastRefreshedAt, site.locale) : t('settings.notYet')}
             </span>
           </div>
         </div>

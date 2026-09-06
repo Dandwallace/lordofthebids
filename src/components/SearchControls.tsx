@@ -25,6 +25,7 @@ import {
 import { toPence, toPounds } from '@/lib/money/money';
 import type { SearchCriteria } from '@/lib/types';
 import { IconChevronRight, IconSearch } from './Brand';
+import { useLocale } from '@/lib/i18n/context';
 
 export interface ActiveFilter {
   key: string;
@@ -112,7 +113,9 @@ function PoundsField({
   pence,
   onChange,
   placeholder,
+  symbol,
 }: {
+  symbol: string;
   id: string;
   label: string;
   hint?: string;
@@ -124,7 +127,7 @@ function PoundsField({
     <div className="field">
       <label htmlFor={id}>{label}</label>
       <div className="input-prefix">
-        <span className="input-prefix__symbol">£</span>
+        <span className="input-prefix__symbol">{symbol}</span>
         <input
           id={id}
           type="number"
@@ -165,6 +168,7 @@ export default function SearchControls({
   loading,
   onClearFilters,
 }: Props) {
+  const { t, site } = useLocale();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const chips = activeFilters(criteria, onCriteriaChange);
 
@@ -185,8 +189,8 @@ export default function SearchControls({
             </span>
             <input
               type="search"
-              aria-label="Search term or eBay listing link"
-              placeholder="Product name, or paste an eBay listing link"
+              aria-label={t('search.ariaLabel')}
+              placeholder={t('search.placeholder')}
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               autoComplete="off"
@@ -203,20 +207,20 @@ export default function SearchControls({
             >
               {(Object.keys(CONDITION_LABELS) as ConditionFilter[]).map((key) => (
                 <option key={key} value={key}>
-                  {CONDITION_LABELS[key]}
+                  {t(`condition.${key}` as 'condition.any')}
                 </option>
               ))}
             </select>
           </div>
           <button type="submit" className="btn btn--primary btn--large" disabled={loading}>
             {loading ? <span className="spinner" aria-hidden="true" /> : <IconSearch size={18} />}
-            {loading ? 'Scanning' : 'Scan'}
+            {loading ? t('search.scanning') : t('search.scan')}
           </button>
         </div>
 
         {chips.length > 0 ? (
           <div className="chips" style={{ marginTop: 16 }}>
-            <span className="section-label">Filters</span>
+            <span className="section-label">{t('search.filters')}</span>
             {chips.map((chip) => (
               <span key={chip.key} className="chip">
                 {chip.label}
@@ -226,7 +230,7 @@ export default function SearchControls({
               </span>
             ))}
             <button type="button" className="btn btn--ghost btn--small" onClick={onClearFilters}>
-              Clear filters
+              {t('search.clearFilters')}
             </button>
           </div>
         ) : null}
@@ -241,7 +245,7 @@ export default function SearchControls({
             <span className={`disclosure__chevron ${showAdvanced ? 'disclosure__chevron--open' : ''}`}>
               <IconChevronRight size={14} />
             </span>
-            More filters
+            {t('search.moreFilters')}
           </button>
 
           {showAdvanced ? (
@@ -253,6 +257,7 @@ export default function SearchControls({
                 <div className="grid-3">
                   <PoundsField
                     id="max-purchase"
+                    symbol={site.currencySymbol}
                     label="Maximum purchase price"
                     hint="Applies to the listings you see, not to the market they are compared against."
                     pence={criteria.maxPurchasePricePence}
@@ -260,6 +265,7 @@ export default function SearchControls({
                   />
                   <PoundsField
                     id="min-profit"
+                    symbol={site.currencySymbol}
                     label="Minimum profit"
                     pence={criteria.minProfitPence}
                     onChange={(value) => onCriteriaChange({ minProfitPence: value ?? 0 })}
@@ -300,7 +306,7 @@ export default function SearchControls({
                     >
                       {(Object.keys(FORMAT_LABELS) as BuyingFormat[]).map((key) => (
                         <option key={key} value={key}>
-                          {FORMAT_LABELS[key]}
+                          {t(`format.${key}` as 'format.any')}
                         </option>
                       ))}
                     </select>
@@ -314,7 +320,7 @@ export default function SearchControls({
                     >
                       {(Object.keys(DELIVERY_LABELS) as DeliveryPreference[]).map((key) => (
                         <option key={key} value={key}>
-                          {DELIVERY_LABELS[key]}
+                          {t(`delivery.${key}` as 'delivery.any')}
                         </option>
                       ))}
                     </select>
@@ -344,12 +350,14 @@ export default function SearchControls({
                 <div className="grid-3">
                   <PoundsField
                     id="ref-min"
+                    symbol={site.currencySymbol}
                     label="Comparison price from"
                     pence={criteria.referenceMinPricePence}
                     onChange={(value) => onCriteriaChange({ referenceMinPricePence: value })}
                   />
                   <PoundsField
                     id="ref-max"
+                    symbol={site.currencySymbol}
                     label="Comparison price to"
                     pence={criteria.referenceMaxPricePence}
                     onChange={(value) => onCriteriaChange({ referenceMaxPricePence: value })}
@@ -363,7 +371,7 @@ export default function SearchControls({
                     >
                       {(Object.keys(SEARCH_DEPTH_INFO) as SearchDepth[]).map((key) => (
                         <option key={key} value={key}>
-                          {SEARCH_DEPTH_INFO[key].label}
+                          {t(`depth.${key}` as 'depth.quick')}
                         </option>
                       ))}
                     </select>

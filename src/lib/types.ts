@@ -7,16 +7,22 @@
  */
 
 import type { CategoryKey, SellerType } from './money/fees';
+import type { MarketplaceId } from './ebay/marketplaces';
+import type { Language } from './i18n/dictionary';
 import type { CostAssumptions } from './money/deal';
 import type { BuyingFormat, ConditionFilter, DeliveryPreference, SearchDepth } from './ebay/browse-types';
 import type { AnalysisResult } from './market/analyse';
 
-export type { CategoryKey, SellerType, CostAssumptions };
+export type { CategoryKey, SellerType, CostAssumptions, MarketplaceId, Language };
 export type { BuyingFormat, ConditionFilter, DeliveryPreference, SearchDepth };
 export type { AnalysisResult };
 
 /** How you sell. Lives in Settings and rarely changes. */
 export interface SellingPreferences {
+  /** Which eBay site is searched, priced and charged. */
+  marketplaceId: MarketplaceId;
+  /** Interface language. Independent of the marketplace. */
+  language: Language;
   sellerType: SellerType;
   category: CategoryKey;
   internationalSale: boolean;

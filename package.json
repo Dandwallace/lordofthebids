@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "verify:ui": "node scripts/verify-ui.mjs",
     "screenshots": "node scripts/screenshots.mjs",
-    "check:ebay": "node scripts/check-ebay.mjs"
+    "check:ebay": "node scripts/check-ebay.mjs",
+    "verify:marketplace": "node scripts/verify-marketplace.mjs"
   },
   "dependencies": {
     "next": "^16.3.4",

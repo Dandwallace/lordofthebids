@@ -24,6 +24,7 @@ import {
   type TargetRequirements,
 } from '../money/deal';
 import { parsePence, type Pence } from '../money/money';
+import { marketplace } from '../ebay/marketplaces';
 import type { EbayItemSummary } from '../ebay/types';
 import {
   assessListing,
@@ -314,7 +315,9 @@ export function analyse(options: AnalyseOptions): AnalysisResult {
     opportunities.push({
       id: item.itemId,
       title: item.title ?? 'Untitled listing',
-      url: item.itemWebUrl ?? `https://www.ebay.co.uk/itm/${encodeURIComponent(item.itemId)}`,
+      url:
+        item.itemWebUrl ??
+        `https://${marketplace(selling.marketplaceId).domain}/itm/${encodeURIComponent(item.itemId)}`,
       imageUrl: item.image?.imageUrl ?? item.thumbnailImages?.[0]?.imageUrl ?? null,
       condition: item.condition ?? null,
       conditionId: item.conditionId ?? null,

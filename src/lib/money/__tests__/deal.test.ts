@@ -3,6 +3,7 @@ import { DEFAULT_COSTS, calculateDeal, calculateMaxPrice, type CostAssumptions, 
 import { calculateFees } from '../fees';
 
 const selling: SellingContext = {
+  marketplaceId: 'EBAY_GB',
   sellerType: 'business',
   category: 'videoGamesAndConsoles',
   internationalSale: false,
@@ -71,6 +72,7 @@ describe('calculateDeal', () => {
     const feesOnFullAmount = calculateFees({
       feeBase: 10000,
       itemPricePence: 10000,
+      marketplaceId: 'EBAY_GB',
       sellerType: 'business',
       category: 'videoGamesAndConsoles',
       internationalSale: false,

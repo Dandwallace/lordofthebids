@@ -25,6 +25,7 @@
  */
 
 import { calculateFees, type CategoryKey, type FeeResult, type SellerType } from './fees';
+import type { MarketplaceId } from '../ebay/marketplaces';
 import { atLeastZero, ratio, roundHalfAwayFromZero, sum, type Pence } from './money';
 
 export interface CostAssumptions {
@@ -54,6 +55,8 @@ export const DEFAULT_COSTS: CostAssumptions = {
 };
 
 export interface SellingContext {
+  /** Which marketplace's fee rules apply to the sale. */
+  marketplaceId: MarketplaceId;
   sellerType: SellerType;
   category: CategoryKey;
   internationalSale: boolean;
@@ -103,6 +106,7 @@ export function calculateDeal(input: DealInput): DealMaths {
     // price is that same amount. Your own outbound postage is a cost, not
     // a charge to the buyer, and so does not reduce the item price here.
     itemPricePence: resalePrice,
+    marketplaceId: selling.marketplaceId,
     sellerType: selling.sellerType,
     category: selling.category,
     internationalSale: selling.internationalSale,
@@ -174,6 +178,7 @@ export function calculateMaxPrice(
     feeBase: resalePrice,
     // Same delivery-included assumption as calculateDeal above.
     itemPricePence: resalePrice,
+    marketplaceId: selling.marketplaceId,
     sellerType: selling.sellerType,
     category: selling.category,
     internationalSale: selling.internationalSale,

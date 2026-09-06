@@ -14,11 +14,12 @@
 import { useMemo, useState } from 'react';
 import type { MarketReference, Opportunity } from '@/lib/market/analyse';
 import { calculateDeal, type CostAssumptions } from '@/lib/money/deal';
-import { EBAY_UK_FEE_RULES } from '@/lib/money/fees';
+import { feeRulesFor } from '@/lib/money/fees';
 import { toPence } from '@/lib/money/money';
 import type { SellingPreferences } from '@/lib/types';
 import { IconBookmark, IconExternal, IconInfo, IconWarning } from './Brand';
 import { EvidenceBadge, Money, Percent, PriceBasisBadge, Profit, Provenance, relativeDays } from './format';
+import { useLocale } from '@/lib/i18n/context';
 
 interface Props {
   opportunity: Opportunity;
@@ -125,6 +126,7 @@ export default function ItemDetails({
   saved,
   onSave,
 }: Props) {
+  const { t, site } = useLocale();
   const [manualResale, setManualResale] = useState('');
 
   const manualPence = useMemo(() => {
@@ -141,7 +143,8 @@ export default function ItemDetails({
       resalePrice: manualPence,
       costs,
       selling: {
-        sellerType: preferences.sellerType,
+        marketplaceId: preferences.marketplaceId,
+      sellerType: preferences.sellerType,
         category: preferences.category,
         internationalSale: preferences.internationalSale,
         vatOnFeesIsACost: preferences.vatOnFeesIsACost,
@@ -382,9 +385,9 @@ export default function ItemDetails({
               <IconWarning />
             </span>
             <div>
-              <div className="notice__title">This category rate is unverified</div>
+              <div className="notice__title">{t('item.rateUnverified')}</div>
               <div className="notice__body">
-                The {EBAY_UK_FEE_RULES.categories[preferences.category].label} final value fee has not
+                The {feeRulesFor(preferences.marketplaceId).categories[preferences.category].label} final value fee has not
                 been confirmed against eBay directly. If you know your exact rate, set it as an
                 override in Settings.
               </div>
@@ -436,7 +439,7 @@ export default function ItemDetails({
             If you think it sells for a different amount, enter it here
           </label>
           <div className="input-prefix">
-            <span className="input-prefix__symbol">£</span>
+            <span className="input-prefix__symbol">{site.currencySymbol}</span>
             <input
               id="manual-resale"
               type="number"

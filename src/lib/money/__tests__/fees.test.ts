@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EBAY_UK_FEE_RULES, calculateFees as rawCalculateFees, type FeeOptions } from '../fees';
+import { CATEGORY_KEYS, EBAY_UK_FEE_RULES, calculateFees as rawCalculateFees, type FeeOptions } from '../fees';
 
 /**
  * Most cases have no separate postage, so the item price and the order
@@ -139,5 +139,84 @@ describe('private seller fees', () => {
   it('charges 3% on international sales', () => {
     const fees = calculateFees({ ...priv, feeBase: 10000, internationalSale: true });
     expect(fees.total).toBe(300);
+  });
+});
+
+/**
+ * Spain diverges from the UK in a way that matters more than any other
+ * difference in this file: private sellers there DO pay a final value
+ * fee. Sharing one rule set would have understated a Spanish private
+ * seller's costs by roughly a seventh of the sale price.
+ */
+describe('marketplace rules do not leak into each other', () => {
+  const priv = {
+    sellerType: 'private' as const,
+    category: 'general' as const,
+    internationalSale: false,
+    vatOnFeesIsACost: true,
+  };
+
+  it('charges a UK private seller nothing on an ordinary sale', () => {
+    expect(calculateFees({ ...priv, marketplaceId: 'EBAY_GB', feeBase: 10000 }).total).toBe(0);
+  });
+
+  it('charges a SPANISH private seller a real fee on the same sale', () => {
+    const fees = calculateFees({ ...priv, marketplaceId: 'EBAY_ES', feeBase: 10000 });
+    // 14% of 100 euros, plus the 0.35 euro per order fee, plus 0.42%.
+    expect(fees.lines.find((l) => l.key === 'fvf')!.amount).toBe(1400);
+    expect(fees.lines.find((l) => l.key === 'perOrder')!.amount).toBe(35);
+    expect(fees.lines.find((l) => l.key === 'regulatory')!.amount).toBe(42);
+    expect(fees.total).toBe(1477);
+  });
+
+  it('never returns zero for a Spanish private seller, whatever the category', () => {
+    for (const category of CATEGORY_KEYS) {
+      const fees = calculateFees({ ...priv, category, marketplaceId: 'EBAY_ES', feeBase: 10000 });
+      expect(fees.total).toBeGreaterThan(0);
+    }
+  });
+
+  it('bands the Spanish per order fee at 10 euros', () => {
+    expect(
+      calculateFees({ ...priv, marketplaceId: 'EBAY_ES', feeBase: 900 }).lines.find((l) => l.key === 'perOrder')!.amount,
+    ).toBe(5);
+    expect(
+      calculateFees({ ...priv, marketplaceId: 'EBAY_ES', feeBase: 1100 }).lines.find((l) => l.key === 'perOrder')!.amount,
+    ).toBe(35);
+  });
+
+  it('adds 21% IVA for a Spanish business seller, not 20% VAT', () => {
+    const fees = calculateFees({
+      sellerType: 'business',
+      category: 'general',
+      internationalSale: false,
+      vatOnFeesIsACost: true,
+      marketplaceId: 'EBAY_ES',
+      feeBase: 10000,
+    });
+    // 14% = 1400, per order 35, regulatory 0.35% = 35 -> 1470 subtotal
+    expect(fees.subtotal).toBe(1470);
+    expect(fees.vat).toBe(309); // 21%
+    expect(fees.total).toBe(1779);
+  });
+
+  it('reports which marketplace priced the sale', () => {
+    expect(calculateFees({ ...priv, marketplaceId: 'EBAY_ES', feeBase: 10000 }).marketplaceId).toBe('EBAY_ES');
+    expect(calculateFees({ ...priv, marketplaceId: 'EBAY_GB', feeBase: 10000 }).marketplaceId).toBe('EBAY_GB');
+  });
+
+  it('defaults to the UK when no marketplace is given, so old callers are unchanged', () => {
+    expect(calculateFees({ ...priv, feeBase: 10000 }).marketplaceId).toBe('EBAY_GB');
+  });
+
+  it('keeps the UK authenticity threshold behaviour intact', () => {
+    const fees = calculateFees({
+      ...priv,
+      marketplaceId: 'EBAY_GB',
+      category: 'watches',
+      feeBase: 10300,
+      itemPricePence: 9500,
+    });
+    expect(fees.total).toBe(0);
   });
 });

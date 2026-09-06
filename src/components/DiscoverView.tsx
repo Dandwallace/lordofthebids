@@ -26,6 +26,7 @@ import {
   IconTool,
 } from './Brand';
 import type { ScanProgress } from './useScanner';
+import { useLocale } from '@/lib/i18n/context';
 
 const ICONS = {
   gamepad: IconGamepad,
@@ -122,6 +123,7 @@ export default function DiscoverView({
   loading,
   progress,
 }: Props) {
+  const { t, site } = useLocale();
   const done = progress.filter((row) => row.status === 'done').length;
   const failed = progress.filter((row) => row.status === 'failed');
 
@@ -129,12 +131,8 @@ export default function DiscoverView({
     <div className="stack" style={{ gap: 24 }}>
       <section className="hero">
         <div>
-          <h1>Start with what you can spend</h1>
-          <p>
-            Set your limits, then scan a category to see what is currently listed below what the rest of
-            the market is asking. You do not need to know the products: each category explains what makes
-            it worth a look and what to check before you buy.
-          </p>
+          <h1>{t('discover.title')}</h1>
+          <p>{t('discover.intro')}</p>
         </div>
         {/* Decorative: the categories below carry the same meaning in text. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -144,15 +142,15 @@ export default function DiscoverView({
       {/* --- Constraints ------------------------------------------------- */}
       <section className="card">
         <div className="card__header">
-          <h2>Your limits</h2>
-          <span className="tiny muted">Used by every scan</span>
+          <h2>{t('discover.limits')}</h2>
+          <span className="tiny muted">{t('discover.limitsNote')}</span>
         </div>
         <div className="card__body">
           <div className="grid-3">
             <div className="field">
-              <label htmlFor="d-max">Maximum purchase price</label>
+              <label htmlFor="d-max">{t('discover.maxPrice')}</label>
               <div className="input-prefix">
-                <span className="input-prefix__symbol">£</span>
+                <span className="input-prefix__symbol">{site.currencySymbol}</span>
                 <input
                   id="d-max"
                   type="number"
@@ -169,13 +167,13 @@ export default function DiscoverView({
                   }}
                 />
               </div>
-              <p className="field__hint">The most you will pay for one item.</p>
+              <p className="field__hint">{t('discover.maxPriceHint')}</p>
             </div>
 
             <div className="field">
-              <label htmlFor="d-profit">Minimum profit</label>
+              <label htmlFor="d-profit">{t('discover.minProfit')}</label>
               <div className="input-prefix">
-                <span className="input-prefix__symbol">£</span>
+                <span className="input-prefix__symbol">{site.currencySymbol}</span>
                 <input
                   id="d-profit"
                   type="number"
@@ -186,11 +184,11 @@ export default function DiscoverView({
                   onChange={(event) => onCriteriaChange({ minProfitPence: toPence(Number(event.target.value) || 0) })}
                 />
               </div>
-              <p className="field__hint">After every fee and cost.</p>
+              <p className="field__hint">{t('discover.minProfitHint')}</p>
             </div>
 
             <div className="field">
-              <label htmlFor="d-roi">Minimum return</label>
+              <label htmlFor="d-roi">{t('discover.minReturn')}</label>
               <div className="input-suffix">
                 <span className="input-suffix__symbol">%</span>
                 <input
@@ -206,7 +204,7 @@ export default function DiscoverView({
                   }}
                 />
               </div>
-              <p className="field__hint">Profit as a share of what you pay out.</p>
+              <p className="field__hint">{t('discover.minReturnHint')}</p>
             </div>
           </div>
 
@@ -214,7 +212,7 @@ export default function DiscoverView({
 
           <div className="grid-2">
             <div className="field">
-              <label htmlFor="d-condition">Condition</label>
+              <label htmlFor="d-condition">{t('discover.condition')}</label>
               <select
                 id="d-condition"
                 value={criteria.condition}
@@ -222,16 +220,16 @@ export default function DiscoverView({
                   onCriteriaChange({ condition: event.target.value as SearchCriteria['condition'] })
                 }
               >
-                <option value="any">Any condition</option>
-                <option value="new">New</option>
-                <option value="used">Used</option>
-                <option value="refurbished">Refurbished</option>
-                <option value="parts">For parts or not working</option>
+                <option value="any">{t('condition.any')}</option>
+                <option value="new">{t('condition.new')}</option>
+                <option value="used">{t('condition.used')}</option>
+                <option value="refurbished">{t('condition.refurbished')}</option>
+                <option value="parts">{t('condition.parts')}</option>
               </select>
             </div>
 
             <div>
-              <span className="field__label">Preferences</span>
+              <span className="field__label">{t('discover.preferences')}</span>
               <label className="check">
                 <input
                   type="checkbox"
@@ -242,8 +240,8 @@ export default function DiscoverView({
                   }}
                 />
                 <span className="check__text">
-                  I can collect locally
-                  <small>Includes listings offering collection, which are often cheaper.</small>
+                  {t('discover.collect')}
+                  <small>{t('discover.collectHint')}</small>
                 </span>
               </label>
               <label className="check">
@@ -253,8 +251,8 @@ export default function DiscoverView({
                   onChange={(event) => onDiscoverPrefsChange({ preferSmallParcels: event.target.checked })}
                 />
                 <span className="check__text">
-                  Prefer small parcels
-                  <small>Favours categories that post cheaply.</small>
+                  {t('discover.smallParcels')}
+                  <small>{t('discover.smallParcelsHint')}</small>
                 </span>
               </label>
               <label className="check">
@@ -264,8 +262,8 @@ export default function DiscoverView({
                   onChange={(event) => onDiscoverPrefsChange({ preferEasyTesting: event.target.checked })}
                 />
                 <span className="check__text">
-                  Prefer items that are easy to test
-                  <small>Favours things you can check works in a minute.</small>
+                  {t('discover.easyTest')}
+                  <small>{t('discover.easyTestHint')}</small>
                 </span>
               </label>
             </div>
@@ -279,10 +277,10 @@ export default function DiscoverView({
           <div className="card__body">
             <div className="row row--between" style={{ marginBottom: 12 }}>
               <span className="section-label">
-                {loading ? 'Scanning' : 'Scan finished'}
+                {loading ? t('discover.scanning') : t('discover.scanFinished')}
               </span>
               <span className="tiny muted num">
-                {done} of {progress.length} searches
+                {t('discover.searchesProgress', { done, total: progress.length })}
               </span>
             </div>
             <div className="progress">
@@ -328,7 +326,7 @@ export default function DiscoverView({
       {/* --- Starter categories ------------------------------------------ */}
       <section>
         <div className="row row--between" style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: 17 }}>Where to start looking</h2>
+          <h2 style={{ fontSize: 17 }}>{t('discover.whereToStart')}</h2>
         </div>
 
         <div className="notice notice--info" style={{ marginBottom: 16 }}>
@@ -336,13 +334,8 @@ export default function DiscoverView({
             <IconInfo />
           </span>
           <div>
-            <div className="notice__title">These are suggestions, not findings</div>
-            <div className="notice__body">
-              The categories below are hand written starting points chosen because they are easy to
-              identify and check. Nothing here claims that a product is in demand or that it sells for a
-              particular price. Numbers only appear once you run a scan, and they come from what is listed
-              right now.
-            </div>
+            <div className="notice__title">{t('discover.suggestionsTitle')}</div>
+            <div className="notice__body">{t('discover.suggestionsBody')}</div>
           </div>
         </div>
 

@@ -32,14 +32,17 @@ import SearchControls from './SearchControls';
 import SettingsPanel from './SettingsPanel';
 import { ErrorState, ExampleBanner, LoadingResults, NotConnected } from './States';
 import { formatDateTime } from './format';
+import { LocaleProvider } from '@/lib/i18n/context';
+import { translate, type TranslationKey } from '@/lib/i18n/dictionary';
+import { marketplace } from '@/lib/ebay/marketplaces';
 import { useScanner } from './useScanner';
 
 type Tab = 'discover' | 'search' | 'saved';
 
-const TABS: { id: Tab; label: string; Icon: typeof IconCompass }[] = [
-  { id: 'discover', label: 'Discover', Icon: IconCompass },
-  { id: 'search', label: 'Search', Icon: IconSearch },
-  { id: 'saved', label: 'Saved', Icon: IconBookmark },
+const TABS: { id: Tab; labelKey: 'nav.discover' | 'nav.search' | 'nav.saved'; Icon: typeof IconCompass }[] = [
+  { id: 'discover', labelKey: 'nav.discover', Icon: IconCompass },
+  { id: 'search', labelKey: 'nav.search', Icon: IconSearch },
+  { id: 'saved', labelKey: 'nav.saved', Icon: IconBookmark },
 ];
 
 const DEFAULT_DISCOVER_PREFS: DiscoverPreferences = {
@@ -94,6 +97,15 @@ export default function AppShell() {
   }, [scanner.meta, scanner.isExample]);
 
   const savedIds = useMemo(() => new Set(saved.items.map((item) => item.id)), [saved.items]);
+
+  // This component renders the provider, so it cannot read from it. Same
+  // inputs, same result.
+  const language = preferences.value.language;
+  const site = marketplace(preferences.value.marketplaceId);
+  const t = useCallback(
+    (key: TranslationKey, values?: Record<string, string | number>) => translate(language, key, values),
+    [language],
+  );
 
   const runSearch = useCallback(
     (term: string) => {
@@ -184,9 +196,9 @@ export default function AppShell() {
   const notConfigured = connection !== null && !connection.configured;
 
   return (
-    <>
+    <LocaleProvider language={preferences.value.language} marketplaceId={preferences.value.marketplaceId}>
       <a className="skip-link" href="#main">
-        Skip to content
+        {t('nav.skip')}
       </a>
 
       <header className="app-header">
@@ -196,8 +208,8 @@ export default function AppShell() {
             <span className="brand__name">Lord of the Bids</span>
           </span>
 
-          <nav className="nav" aria-label="Main">
-            {TABS.map(({ id, label, Icon }) => (
+          <nav className="nav" aria-label={t('nav.main')}>
+            {TABS.map(({ id, labelKey, Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -206,7 +218,7 @@ export default function AppShell() {
                 onClick={() => setTab(id)}
               >
                 <Icon size={15} />
-                {label}
+                {t(labelKey)}
                 {id === 'saved' && saved.items.length > 0 ? (
                   <span className="nav__count num">{saved.items.length}</span>
                 ) : null}
@@ -223,12 +235,12 @@ export default function AppShell() {
               />
               <span className="desktop-inline">
                 {connection === null
-                  ? 'Checking'
+                  ? t('status.checking')
                   : connection.configured
                     ? lastRefreshedAt
-                      ? `Updated ${formatDateTime(lastRefreshedAt)}`
-                      : 'Connected'
-                    : 'Not connected'}
+                      ? t('status.updated', { time: formatDateTime(lastRefreshedAt, site.locale) })
+                      : t('status.connected')
+                    : t('status.notConnected')}
               </span>
             </span>
 
@@ -239,7 +251,7 @@ export default function AppShell() {
               aria-haspopup="dialog"
             >
               <IconSettings size={15} />
-              <span className="desktop-inline">Settings</span>
+              <span className="desktop-inline">{t('nav.settings')}</span>
             </button>
           </div>
         </div>
@@ -262,11 +274,8 @@ export default function AppShell() {
         {tab === 'search' ? (
           <div className="stack" style={{ gap: 20 }}>
             <div className="page-head" style={{ marginBottom: 0 }}>
-              <h1>Search</h1>
-              <p>
-                Look up a product, or paste an eBay listing link to review one listing against its own
-                market.
-              </p>
+              <h1>{t('search.title')}</h1>
+              <p>{t('search.intro')}</p>
             </div>
 
             <SearchControls
@@ -290,13 +299,10 @@ export default function AppShell() {
             {!scanner.loading && !scanner.analysis && !scanner.error && !notConfigured ? (
               <div className="card">
                 <div className="empty">
-                  <h3>Ready when you are</h3>
-                  <p className="secondary-text">
-                    Enter a product above, or start from a category on Discover if you are not sure what to
-                    look for.
-                  </p>
+                  <h3>{t('search.ready')}</h3>
+                  <p className="secondary-text">{t('search.readyBody')}</p>
                   <button type="button" className="btn btn--secondary" onClick={viewExample}>
-                    View example results
+                    {t('search.viewExample')}
                   </button>
                 </div>
               </div>
@@ -308,7 +314,9 @@ export default function AppShell() {
 
                 <div className="row row--between row--wrap">
                   <h2 style={{ fontSize: 17 }}>
-                    {scanner.analysis.opportunities.filter((o) => o.meetsTargets).length} worth a look
+                    {t('search.worthALook', {
+                      count: scanner.analysis.opportunities.filter((o) => o.meetsTargets).length,
+                    })}
                   </h2>
                   <label className="check" style={{ minHeight: 0 }}>
                     <input
@@ -317,7 +325,7 @@ export default function AppShell() {
                       onChange={(event) => setShowExcluded(event.target.checked)}
                     />
                     <span className="check__text">
-                      Show excluded ({scanner.analysis.filteredOutCount})
+                      {t('search.showExcluded', { count: scanner.analysis.filteredOutCount })}
                     </span>
                   </label>
                 </div>
@@ -337,8 +345,8 @@ export default function AppShell() {
         {tab === 'saved' ? (
           <div className="stack" style={{ gap: 20 }}>
             <div className="page-head" style={{ marginBottom: 0 }}>
-              <h1>Saved</h1>
-              <p>Opportunities you shortlisted, with your own notes and where you got to.</p>
+              <h1>{t('saved.title')}</h1>
+              <p>{t('saved.intro')}</p>
             </div>
             <SavedView
               items={saved.items}
@@ -377,7 +385,7 @@ export default function AppShell() {
       <Drawer
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        title="Settings"
+        title={t('settings.title')}
         titleId="settings-drawer-title"
       >
         <SettingsPanel
@@ -387,6 +395,6 @@ export default function AppShell() {
           lastRefreshedAt={lastRefreshedAt}
         />
       </Drawer>
-    </>
+    </LocaleProvider>
   );
 }

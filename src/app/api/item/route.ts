@@ -65,10 +65,11 @@ export async function POST(request: Request) {
   const preferences = parsePreferences(body.preferences);
 
   try {
-    const item = await getItemByLegacyId(itemId);
+    const item = await getItemByLegacyId(itemId, preferences.marketplaceId);
     const term = searchTermFromTitle(item.title ?? '');
 
     const market = await searchActiveListings({
+      marketplaceId: preferences.marketplaceId,
       query: term,
       condition: criteria.condition,
       buyingFormat: 'any',
@@ -89,7 +90,8 @@ export async function POST(request: Request) {
       query: term,
       costs: preferences.costs,
       selling: {
-        sellerType: preferences.sellerType,
+        marketplaceId: preferences.marketplaceId,
+      sellerType: preferences.sellerType,
         category: preferences.category,
         internationalSale: preferences.internationalSale,
         vatOnFeesIsACost: preferences.vatOnFeesIsACost,

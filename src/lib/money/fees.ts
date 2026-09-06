@@ -32,9 +32,31 @@
  * removed selling fees for private sellers on eligible domestic sales.
  * This file follows the post October 2024 position, and private is the
  * default seller type for this tool.
+ *
+ * =====================================================================
+ * MARKETPLACES DIVERGE, AND ONE DIFFERENCE IS DANGEROUS
+ *
+ * The 1 October 2024 nil fee change for private sellers is a UNITED
+ * KINGDOM change. It does not apply in Spain: Spanish private sellers pay
+ * a final value fee on ordinary sales. Sharing one rule set across both
+ * marketplaces would have handed a Spanish private seller a profit figure
+ * with roughly 14% of the sale price missing from the costs.
+ *
+ * Rules are therefore keyed by marketplace and there is no shared
+ * fallback. Adding a marketplace means writing its rules, not inheriting
+ * someone else's.
+ *
+ * Spanish figures were taken from secondary references in September 2026,
+ * as eBay's own pages were unreachable from this environment. They are
+ * less certain than the UK ones: sources give a 13% to 15% band for the
+ * final value fee without a public per category table, so a single
+ * indicative rate is used and flagged as such in the interface. Use the
+ * manual override once you know your real rate.
+ * =====================================================================
  */
 
 import { applyRate, atLeastZero, sum, type Pence } from './money';
+import { DEFAULT_MARKETPLACE, type MarketplaceId } from '../ebay/marketplaces';
 
 export type SellerType = 'private' | 'business';
 
@@ -75,7 +97,8 @@ export interface CategoryFeeProfile {
  * THE single source of truth for every rate this app applies.
  * Bump `version` and `verifiedOn` whenever a number here changes.
  */
-export const EBAY_UK_FEE_RULES = {
+const GB_RULES = {
+  marketplaceId: 'EBAY_GB' as MarketplaceId,
   version: '2026-09-05',
   verifiedOn: '2026-09-05',
   verifiedAgainst: 'Secondary UK seller fee references, not eBay directly. Verify before relying on it.',
@@ -89,9 +112,9 @@ export const EBAY_UK_FEE_RULES = {
   feeBaseIncludesBuyerPostage: true,
 
   private: {
-    /** Nil on eligible domestic sales since 1 October 2024. */
+    /** Nil on eligible domestic sales since 1 October 2024. UK ONLY. */
     finalValueFeeRate: 0,
-    perOrderFeePence: 0,
+    perOrderFee: { lowPence: 0, highPence: 0, thresholdPence: 0 },
     regulatoryOperatingFeeRate: 0,
     /** Charged on international sales on top of anything else. */
     internationalSaleFeeRate: 0.03,
@@ -204,6 +227,88 @@ export const EBAY_UK_FEE_RULES = {
   } satisfies Record<CategoryKey, CategoryFeeProfile>,
 } as const;
 
+/**
+ * eBay Spain.
+ *
+ * The important difference from the UK: Spanish PRIVATE sellers pay a
+ * final value fee on ordinary sales. The nil fee position that applies in
+ * the UK since October 2024 has no Spanish equivalent, so nothing here
+ * inherits from the UK rules.
+ *
+ * Confidence is lower than the UK set. Sources give a 13% to 15% band for
+ * the final value fee without a public per category breakdown, so one
+ * indicative mid band rate is applied to every category and flagged in the
+ * interface rather than inventing per category precision. The manual
+ * override in Settings is the right fix once you know your actual rate.
+ *
+ * Authenticity checked thresholds are deliberately left empty: eBay does
+ * operate authenticity programmes in Spain, but the value thresholds could
+ * not be established, and a guessed threshold is worse than none.
+ */
+const ES_RULES = {
+  marketplaceId: 'EBAY_ES' as MarketplaceId,
+  version: '2026-09-06',
+  verifiedOn: '2026-09-06',
+  verifiedAgainst:
+    'Secondary Spanish seller references, not eBay directly. Rates are an indicative mid band; verify before relying on them.',
+  marketplace: 'EBAY_ES',
+
+  feeBaseIncludesBuyerPostage: true,
+
+  private: {
+    /** Spanish private sellers DO pay a final value fee. */
+    finalValueFeeRate: 0.14,
+    /** 0.05 euros under 10 euros, 0.35 euros at or above it. */
+    perOrderFee: { lowPence: 5, highPence: 35, thresholdPence: 1000 },
+    regulatoryOperatingFeeRate: 0.0042,
+    internationalSaleFeeRate: 0.03,
+    /** Fees quoted to private sellers in Spain already include IVA. */
+    vatOnFeesRate: 0,
+    buyerProtectionFeeDeducted: false,
+  },
+
+  business: {
+    perOrderFee: { lowPence: 5, highPence: 35, thresholdPence: 1000 },
+    regulatoryOperatingFeeRate: 0.0035,
+    /** Spanish IVA, added on top of professional seller fees. */
+    vatOnFeesRate: 0.21,
+    internationalSaleFeeRate: 0.03,
+  },
+
+  categories: {
+    general: { label: 'General / otros', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    techAndElectronics: { label: 'Tecnología y electrónica', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    videoGamesAndConsoles: { label: 'Videojuegos y consolas', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    boardGamesAndPuzzles: { label: 'Juegos de mesa y juguetes', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    clothingAndAccessories: { label: 'Ropa y accesorios', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    homeAndGarden: { label: 'Hogar y jardín', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    mediaBooksGames: { label: 'Libros, música y cine', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    businessAndIndustrial: { label: 'Empresa e industria', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    watches: { label: 'Relojes', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    trainers: { label: 'Zapatillas', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    designerHandbags: { label: 'Bolsos de diseño', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+    tradingCards: { label: 'Cartas coleccionables', businessFinalValueFeeRate: 0.14, businessRateConfidence: 'indicative', authenticityChecked: null },
+  } satisfies Record<CategoryKey, CategoryFeeProfile>,
+} as const;
+
+/**
+ * Fee rules by marketplace. There is deliberately no shared default: a
+ * marketplace without its own rules is not supported, rather than quietly
+ * charged someone else's.
+ */
+export const FEE_RULES = {
+  EBAY_GB: GB_RULES,
+  EBAY_ES: ES_RULES,
+} as const;
+
+export function feeRulesFor(marketplaceId: MarketplaceId) {
+  return FEE_RULES[marketplaceId] ?? FEE_RULES[DEFAULT_MARKETPLACE];
+}
+
+/** The UK set, kept under its original name for existing callers. */
+export const EBAY_UK_FEE_RULES = GB_RULES;
+
+
 export const CATEGORY_KEYS = Object.keys(EBAY_UK_FEE_RULES.categories) as CategoryKey[];
 
 export function categoryLabel(key: CategoryKey): string {
@@ -228,6 +333,12 @@ export interface FeeOptions {
    * Fees themselves are always calculated on `feeBase`.
    */
   itemPricePence: Pence;
+  /**
+   * Which marketplace's rules apply. Fees differ enough between countries
+   * that this is not optional in spirit; it defaults only so existing UK
+   * callers keep working.
+   */
+  marketplaceId?: MarketplaceId;
   sellerType: SellerType;
   category: CategoryKey;
   internationalSale: boolean;
@@ -260,6 +371,7 @@ export interface FeeResult {
   vat: Pence;
   /** What actually comes off the payout, given the VAT treatment. */
   total: Pence;
+  marketplaceId: MarketplaceId;
   rulesVersion: string;
   verifiedOn: string;
   /** True when a manual override replaced the published rate. */
@@ -275,6 +387,7 @@ export function calculateFees(options: FeeOptions): FeeResult {
   const {
     feeBase,
     itemPricePence,
+    marketplaceId = DEFAULT_MARKETPLACE,
     sellerType,
     category,
     internationalSale,
@@ -282,7 +395,8 @@ export function calculateFees(options: FeeOptions): FeeResult {
     finalValueFeeRateOverride,
   } = options;
 
-  const profile = EBAY_UK_FEE_RULES.categories[category];
+  const rules = feeRulesFor(marketplaceId);
+  const profile = rules.categories[category];
   const lines: FeeLine[] = [];
   const hasOverride =
     typeof finalValueFeeRateOverride === 'number' && Number.isFinite(finalValueFeeRateOverride);
@@ -291,8 +405,8 @@ export function calculateFees(options: FeeOptions): FeeResult {
   let rateConfidence: RateConfidence = 'confirmed';
 
   if (sellerType === 'business') {
-    const rules = EBAY_UK_FEE_RULES.business;
-    vatRate = rules.vatOnFeesRate;
+    const businessRules = rules.business;
+    vatRate = businessRules.vatOnFeesRate;
 
     const fvfRate = hasOverride ? finalValueFeeRateOverride! : profile.businessFinalValueFeeRate;
     rateConfidence = hasOverride ? 'confirmed' : profile.businessRateConfidence;
@@ -305,39 +419,57 @@ export function calculateFees(options: FeeOptions): FeeResult {
     });
 
     const perOrder =
-      feeBase > rules.perOrderFee.thresholdPence
-        ? rules.perOrderFee.highPence
-        : rules.perOrderFee.lowPence;
-    lines.push({
-      key: 'perOrder',
-      label: 'Per order fee',
-      amount: perOrder,
-      basis: `Flat fee, ${feeBase > rules.perOrderFee.thresholdPence ? 'orders over £10' : 'orders up to £10'}`,
-    });
+      feeBase > businessRules.perOrderFee.thresholdPence
+        ? businessRules.perOrderFee.highPence
+        : businessRules.perOrderFee.lowPence;
+    if (perOrder > 0) {
+      lines.push({
+        key: 'perOrder',
+        label: 'Per order fee',
+        amount: perOrder,
+        basis: `Flat fee, ${feeBase > businessRules.perOrderFee.thresholdPence ? 'larger orders' : 'small orders'}`,
+      });
+    }
 
-    lines.push({
-      key: 'regulatory',
-      label: 'Regulatory operating fee',
-      amount: applyRate(feeBase, rules.regulatoryOperatingFeeRate),
-      basis: `${(rules.regulatoryOperatingFeeRate * 100).toFixed(2)}% of the full order total`,
-    });
+    if (businessRules.regulatoryOperatingFeeRate > 0) {
+      lines.push({
+        key: 'regulatory',
+        label: 'Regulatory operating fee',
+        amount: applyRate(feeBase, businessRules.regulatoryOperatingFeeRate),
+        basis: `${(businessRules.regulatoryOperatingFeeRate * 100).toFixed(2)}% of the full order total`,
+      });
+    }
 
     if (internationalSale) {
       lines.push({
         key: 'international',
         label: 'International sale fee',
-        amount: applyRate(feeBase, rules.internationalSaleFeeRate),
-        basis: `${(rules.internationalSaleFeeRate * 100).toFixed(0)}% when the buyer is outside the UK`,
+        amount: applyRate(feeBase, businessRules.internationalSaleFeeRate),
+        basis: `${(businessRules.internationalSaleFeeRate * 100).toFixed(0)}% when the buyer is in another country`,
       });
     }
   } else {
-    const rules = EBAY_UK_FEE_RULES.private;
-    vatRate = rules.vatOnFeesRate;
+    const privateRules = rules.private;
+    vatRate = privateRules.vatOnFeesRate;
 
     const authenticity = profile.authenticityChecked;
     // Tested against the item price, not the order total: postage does not
     // push an item over an authenticity threshold.
     const authenticityApplies = authenticity !== null && itemPricePence > authenticity.thresholdPence;
+
+    // A marketplace where private sellers pay an ordinary final value fee.
+    // The UK sets this to zero; Spain does not. Nothing here may assume
+    // the UK position.
+    if (!authenticityApplies && privateRules.finalValueFeeRate > 0) {
+      const fvfRate = hasOverride ? finalValueFeeRateOverride! : privateRules.finalValueFeeRate;
+      rateConfidence = hasOverride ? 'confirmed' : 'indicative';
+      lines.push({
+        key: 'fvf',
+        label: 'Final value fee',
+        amount: applyRate(feeBase, fvfRate),
+        basis: `${(fvfRate * 100).toFixed(1)}% of the full order total${hasOverride ? ' (manual override)' : ''}`,
+      });
+    }
 
     if (authenticityApplies) {
       const fvfRate = hasOverride
@@ -359,6 +491,27 @@ export function calculateFees(options: FeeOptions): FeeResult {
         amount: authenticity.privatePerOrderFeePence,
         basis: 'Flat fee on authenticity checked sales',
       });
+    } else if (privateRules.finalValueFeeRate > 0) {
+      const perOrder =
+        feeBase > privateRules.perOrderFee.thresholdPence
+          ? privateRules.perOrderFee.highPence
+          : privateRules.perOrderFee.lowPence;
+      if (perOrder > 0) {
+        lines.push({
+          key: 'perOrder',
+          label: 'Per order fee',
+          amount: perOrder,
+          basis: `Flat fee, ${feeBase > privateRules.perOrderFee.thresholdPence ? 'larger orders' : 'small orders'}`,
+        });
+      }
+      if (privateRules.regulatoryOperatingFeeRate > 0) {
+        lines.push({
+          key: 'regulatory',
+          label: 'Regulatory operating fee',
+          amount: applyRate(feeBase, privateRules.regulatoryOperatingFeeRate),
+          basis: `${(privateRules.regulatoryOperatingFeeRate * 100).toFixed(2)}% of the full order total`,
+        });
+      }
     } else if (hasOverride) {
       rateConfidence = 'confirmed';
       lines.push({
@@ -373,8 +526,8 @@ export function calculateFees(options: FeeOptions): FeeResult {
       lines.push({
         key: 'international',
         label: 'International sale fee',
-        amount: applyRate(feeBase, rules.internationalSaleFeeRate),
-        basis: `${(rules.internationalSaleFeeRate * 100).toFixed(0)}% when the buyer is outside the UK`,
+        amount: applyRate(feeBase, privateRules.internationalSaleFeeRate),
+        basis: `${(privateRules.internationalSaleFeeRate * 100).toFixed(0)}% when the buyer is in another country`,
       });
     }
   }
@@ -388,8 +541,9 @@ export function calculateFees(options: FeeOptions): FeeResult {
     subtotal,
     vat,
     total: atLeastZero(total),
-    rulesVersion: EBAY_UK_FEE_RULES.version,
-    verifiedOn: EBAY_UK_FEE_RULES.verifiedOn,
+    marketplaceId,
+    rulesVersion: rules.version,
+    verifiedOn: rules.verifiedOn,
     usedOverride: hasOverride,
     rateConfidence,
   };

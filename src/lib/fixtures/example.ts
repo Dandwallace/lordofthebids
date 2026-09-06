@@ -112,6 +112,7 @@ export function buildExampleAnalysis(
     query: EXAMPLE_QUERY,
     costs: preferences.costs,
     selling: {
+      marketplaceId: preferences.marketplaceId,
       sellerType: preferences.sellerType,
       category: preferences.category,
       internationalSale: preferences.internationalSale,

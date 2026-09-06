@@ -13,7 +13,8 @@
 import 'server-only';
 import { getApplicationToken, invalidateToken } from './auth';
 import { TtlCache, withConcurrency } from './cache';
-import { ebayApiBase, ebayMarketplaceId } from './config';
+import { ebayApiBase } from './config';
+import { marketplace, type MarketplaceId } from './marketplaces';
 import { notFound, rateLimited, upstreamUnavailable } from './errors';
 export { parseEbayItemId } from './url';
 import { SEARCH_DEPTH_INFO, type BuyingFormat, type ConditionFilter, type DeliveryPreference, type SearchDepth } from './browse-types';
@@ -39,6 +40,8 @@ const CONDITION_IDS: Record<Exclude<ConditionFilter, 'any'>, string[]> = {
 };
 
 export interface BrowseSearchParams {
+  /** Which eBay site to search. Decides currency, delivery and context. */
+  marketplaceId: MarketplaceId;
   query: string;
   condition: ConditionFilter;
   buyingFormat: BuyingFormat;
@@ -67,13 +70,16 @@ const searchCache = new TtlCache<BrowseSearchResult>(10 * 60 * 1000, 120);
 const itemCache = new TtlCache<EbayItemDetail>(10 * 60 * 1000, 200);
 
 function buildFilter(params: BrowseSearchParams): string {
+  const site = marketplace(params.marketplaceId);
   const filters: string[] = [];
 
   const min = params.referenceMinPrice;
   const max = params.referenceMaxPrice;
   if ((typeof min === 'number' && min > 0) || (typeof max === 'number' && max > 0)) {
     filters.push(`price:[${min && min > 0 ? min : ''}..${max && max > 0 ? max : ''}]`);
-    filters.push('priceCurrency:GBP');
+    // The marketplace's own currency: asking eBay to filter Spanish
+    // listings in GBP returns nothing.
+    filters.push(`priceCurrency:${site.currency}`);
   }
 
   if (params.condition !== 'any') {
@@ -86,7 +92,7 @@ function buildFilter(params: BrowseSearchParams): string {
   if (params.delivery === 'collectionAvailable') {
     filters.push('deliveryOptions:{SELLER_ARRANGED_LOCAL_PICKUP}');
   } else if (params.delivery === 'delivered') {
-    filters.push('deliveryCountry:GB');
+    filters.push(`deliveryCountry:${site.country}`);
   }
 
   return filters.join(',');
@@ -101,7 +107,7 @@ function cacheKey(params: BrowseSearchParams): string {
     params.referenceMinPrice ?? null,
     params.referenceMaxPrice ?? null,
     params.depth,
-    ebayMarketplaceId(),
+    params.marketplaceId,
   ]);
 }
 
@@ -116,17 +122,23 @@ function sleep(ms: number): Promise<void> {
  * retrying. A 429 is never retried: the allowance is exhausted and
  * hammering it makes things worse.
  */
-async function ebayGet(url: URL, attempt = 0, retriedAuth = false): Promise<Response> {
+async function ebayGet(
+  url: URL,
+  marketplaceId: MarketplaceId,
+  attempt = 0,
+  retriedAuth = false,
+): Promise<Response> {
   const token = await getApplicationToken();
+  const site = marketplace(marketplaceId);
 
   let response: Response;
   try {
     response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'X-EBAY-C-MARKETPLACE-ID': ebayMarketplaceId(),
-        // A UK context makes eBay quote realistic delivery costs.
-        'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DGB',
+        'X-EBAY-C-MARKETPLACE-ID': site.id,
+        // The buyer's country, so eBay quotes realistic delivery costs.
+        'X-EBAY-C-ENDUSERCTX': `contextualLocation=country%3D${site.country}`,
         Accept: 'application/json',
       },
       cache: 'no-store',
@@ -134,7 +146,7 @@ async function ebayGet(url: URL, attempt = 0, retriedAuth = false): Promise<Resp
   } catch (error) {
     if (attempt < RETRY_DELAYS_MS.length) {
       await sleep(RETRY_DELAYS_MS[attempt]);
-      return ebayGet(url, attempt + 1, retriedAuth);
+      return ebayGet(url, marketplaceId, attempt + 1, retriedAuth);
     }
     console.error('[ebay/browse] request could not be sent:', error);
     throw upstreamUnavailable();
@@ -142,14 +154,14 @@ async function ebayGet(url: URL, attempt = 0, retriedAuth = false): Promise<Resp
 
   if (response.status === 401 && !retriedAuth) {
     invalidateToken();
-    return ebayGet(url, attempt, true);
+    return ebayGet(url, marketplaceId, attempt, true);
   }
 
   if (response.status === 429) throw rateLimited();
 
   if (response.status >= 500 && attempt < RETRY_DELAYS_MS.length) {
     await sleep(RETRY_DELAYS_MS[attempt]);
-    return ebayGet(url, attempt + 1, retriedAuth);
+    return ebayGet(url, marketplaceId, attempt + 1, retriedAuth);
   }
 
   return response;
@@ -166,7 +178,7 @@ function searchUrl(params: BrowseSearchParams, offset: number): URL {
 }
 
 async function fetchPage(params: BrowseSearchParams, offset: number): Promise<EbaySearchResponse> {
-  const response = await ebayGet(searchUrl(params, offset));
+  const response = await ebayGet(searchUrl(params, offset), params.marketplaceId);
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
@@ -236,14 +248,18 @@ export async function searchActiveListings(params: BrowseSearchParams): Promise<
 }
 
 /** Fetches one listing in full, including its description. */
-export async function getItemByLegacyId(legacyItemId: string): Promise<EbayItemDetail> {
-  const cached = itemCache.get(legacyItemId);
+export async function getItemByLegacyId(
+  legacyItemId: string,
+  marketplaceId: MarketplaceId,
+): Promise<EbayItemDetail> {
+  const cacheKey = `${marketplaceId}:${legacyItemId}`;
+  const cached = itemCache.get(cacheKey);
   if (cached) return cached;
 
   const url = new URL(`${ebayApiBase()}/buy/browse/v1/item/get_item_by_legacy_id`);
   url.searchParams.set('legacy_item_id', legacyItemId);
 
-  const response = await ebayGet(url);
+  const response = await ebayGet(url, marketplaceId);
   if (response.status === 404) throw notFound('That listing');
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
@@ -252,6 +268,6 @@ export async function getItemByLegacyId(legacyItemId: string): Promise<EbayItemD
   }
 
   const item = (await response.json()) as EbayItemDetail;
-  itemCache.set(legacyItemId, item);
+  itemCache.set(cacheKey, item);
   return item;
 }

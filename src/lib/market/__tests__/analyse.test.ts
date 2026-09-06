@@ -24,7 +24,8 @@ const base: Omit<AnalyseOptions, 'items'> = {
   query: 'nintendo switch oled console',
   costs: DEFAULT_COSTS,
   selling: {
-    sellerType: 'business',
+    marketplaceId: 'EBAY_GB',
+      sellerType: 'business',
     category: 'videoGamesAndConsoles',
     internationalSale: false,
     vatOnFeesIsACost: true,

@@ -14,6 +14,7 @@ import type {
   DeliveryPreference,
   SearchDepth,
 } from './ebay/browse-types';
+import { toMarketplaceId } from './ebay/marketplaces';
 import type { SearchCriteria, SellingPreferences } from './types';
 
 const CONDITIONS: ConditionFilter[] = ['any', 'new', 'refurbished', 'used', 'parts'];
@@ -60,6 +61,8 @@ export function parsePreferences(raw: unknown): SellingPreferences {
 
   const override = input.finalValueFeeRateOverride;
   return {
+    marketplaceId: toMarketplaceId(input.marketplaceId),
+    language: input.language === 'es' ? 'es' : 'en',
     // Private, matching the client default. If a request omits the
     // seller type, falling back to business would deduct fees a private
     // seller does not pay.

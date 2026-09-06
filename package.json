@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:ui": "node scripts/verify-ui.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "check:ebay": "node scripts/check-ebay.mjs"
   },
   "dependencies": {
     "next": "^16.3.4",

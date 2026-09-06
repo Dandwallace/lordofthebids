@@ -64,7 +64,13 @@ function StarterCard({
   onRunSearch: (query: string) => void;
   loading: boolean;
 }) {
+  const { t, language } = useLocale();
   const Icon = ICONS[category.icon];
+  // The card's prose is written in both languages rather than machine
+  // translated at render time.
+  const title = category.title[language];
+  const why = category.why[language];
+  const checks = category.checks[language];
 
   return (
     <div className="starter">
@@ -73,19 +79,19 @@ function StarterCard({
           <Icon size={20} />
         </span>
         <div>
-          <div className="starter__title">{category.title}</div>
+          <div className="starter__title">{title}</div>
           <span className="badge badge--neutral" style={{ marginTop: 4 }}>
-            Starting point, not evidence
+            {t('discover.startingPoint')}
           </span>
         </div>
       </div>
 
-      <p className="starter__why">{category.why}</p>
+      <p className="starter__why">{why}</p>
 
       <div className="starter__checks">
-        <strong>What decides it:</strong>
+        <strong>{t('discover.whatDecides')}</strong>
         <ul className="bullets" style={{ marginTop: 4, fontSize: 12 }}>
-          {category.checks.map((check) => (
+          {checks.map((check) => (
             <li key={check}>{check}</li>
           ))}
         </ul>
@@ -107,7 +113,7 @@ function StarterCard({
 
       <button type="button" className="btn btn--secondary btn--block" onClick={onRun} disabled={loading}>
         <IconSearch size={15} />
-        Scan this category
+        {t('discover.scanCategory')}
       </button>
     </div>
   );

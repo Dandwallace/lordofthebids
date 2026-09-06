@@ -67,15 +67,19 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
 
   return (
     <div className="stack" style={{ gap: 24 }}>
-      {/* --- Marketplace ------------------------------------------------ */}
+      {/* --- Region, language and currency ------------------------------
+          Three separate concerns, presented as three rows rather than
+          bundled, because they are easy to confuse: the region decides
+          what is searched and how fees are charged, the language changes
+          only the words, and the currency follows the region.
+      */}
       <div className="settings-group">
-        <div className="settings-group__title">{t('settings.marketplace')}</div>
-        <p className="settings-group__intro">{t('settings.marketplaceIntro')}</p>
+        <div className="settings-group__title">{t('settings.regionGroup')}</div>
+        <p className="settings-group__intro">{t('settings.regionGroupIntro')}</p>
 
-        <div className="field">
-          <label className="visually-hidden" htmlFor="marketplace">
-            {t('settings.marketplace')}
-          </label>
+        {/* 1. eBay region */}
+        <div className="field" style={{ marginBottom: 18 }}>
+          <label htmlFor="marketplace">{t('settings.region')}</label>
           <select
             id="marketplace"
             value={preferences.marketplaceId}
@@ -87,19 +91,11 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
               </option>
             ))}
           </select>
+          <p className="field__hint">{t('settings.regionHint')}</p>
         </div>
 
-        <div className="notice notice--caution" style={{ marginTop: 12 }}>
-          <span className="notice__icon">
-            <IconWarning />
-          </span>
-          <div>
-            <div className="notice__title">{t('settings.marketplaceWarning')}</div>
-            <div className="notice__body">{t('settings.marketplaceWarningBody')}</div>
-          </div>
-        </div>
-
-        <div className="field" style={{ marginTop: 16 }}>
+        {/* 2. Interface language, deliberately independent of the region */}
+        <div className="field" style={{ marginBottom: 18 }}>
           <span className="field__label" id="language-label">
             {t('settings.language')}
           </span>
@@ -116,6 +112,32 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
             ))}
           </div>
           <p className="field__hint">{t('settings.languageIntro')}</p>
+        </div>
+
+        {/* 3. Currency. Shown as its own row so it is visible rather than
+            implied, but not editable: converting would need an exchange
+            rate, and there is no source for one here. */}
+        <div className="field">
+          <span className="field__label" id="currency-label">
+            {t('settings.currency')}
+          </span>
+          <div className="rule-version" aria-labelledby="currency-label" style={{ marginTop: 0 }}>
+            <span className="num" style={{ fontWeight: 700, fontSize: 15 }}>
+              {site.currencySymbol} {site.currency}
+            </span>
+            <span className="muted">· {t('settings.currencyFixed')}</span>
+          </div>
+          <p className="field__hint">{t('settings.currencyHint')}</p>
+        </div>
+
+        <div className="notice notice--caution" style={{ marginTop: 16 }}>
+          <span className="notice__icon">
+            <IconWarning />
+          </span>
+          <div>
+            <div className="notice__title">{t('settings.marketplaceWarning')}</div>
+            <div className="notice__body">{t('settings.marketplaceWarningBody')}</div>
+          </div>
         </div>
       </div>
 
@@ -144,10 +166,12 @@ export default function SettingsPanel({ preferences, onChange, connection, lastR
               {t('settings.private')}
             </button>
           </div>
+          {/* Region specific: the UK nil fee position for private sellers
+              is not true in Spain, so this must never be a single string. */}
           <p className="field__hint">
-            {preferences.sellerType === 'business'
-              ? 'A category final value fee, a per order fee, a 0.35% regulatory fee, and 20% VAT on all of them.'
-              : 'No selling fees on eligible domestic sales since 1 October 2024. The Buyer Protection fee is paid by the buyer, so it is never deducted here. Authenticity checked categories and international sales still carry a fee.'}
+            {t(
+              `settings.hint.${preferences.sellerType}.${preferences.marketplaceId}` as 'settings.hint.private.EBAY_GB',
+            )}
           </p>
         </div>
 

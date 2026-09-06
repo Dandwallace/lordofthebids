@@ -183,6 +183,16 @@ const en = {
 
   // --- Settings ---
   'settings.title': 'Settings',
+  'settings.regionGroup': 'Region, language and currency',
+  'settings.regionGroupIntro':
+    'Three separate settings. The region decides what is searched and how fees are charged; the language changes only the words on screen; the currency follows the region.',
+  'settings.region': 'eBay region',
+  'settings.regionHint':
+    'Which eBay site is searched. Also sets the delivery country, the fee rules and the currency.',
+  'settings.currency': 'Currency',
+  'settings.currencyHint':
+    'Follows the region, because prices come from eBay already in that currency. Showing them in another one would need an exchange rate this app does not have, and converting without one would be inventing numbers.',
+  'settings.currencyFixed': 'set by the region',
   'settings.marketplace': 'Marketplace',
   'settings.marketplaceIntro':
     'Which eBay site is searched and priced. Fees, currency and delivery all follow this choice.',
@@ -195,6 +205,14 @@ const en = {
   'settings.howYouSellIntro':
     'This decides which eBay fees come out of your payout. Private is the default, because private sellers pay no final value fee on eligible domestic sales in the UK.',
   'settings.sellerType': 'Seller type',
+  'settings.hint.private.EBAY_GB':
+    'No selling fees on eligible domestic sales since 1 October 2024. The Buyer Protection fee is paid by the buyer, so it is never deducted here. Authenticity checked categories and international sales still carry a fee.',
+  'settings.hint.private.EBAY_ES':
+    'Spanish private sellers DO pay a final value fee: the UK nil fee position does not apply here. A per order fee and a regulatory fee also apply, and the quoted rates already include IVA.',
+  'settings.hint.business.EBAY_GB':
+    'A category final value fee, a per order fee, a 0.35% regulatory fee, and 20% VAT on all of them.',
+  'settings.hint.business.EBAY_ES':
+    'A category final value fee, a per order fee, a 0.35% regulatory fee, and 21% IVA on all of them.',
   'settings.business': 'Business',
   'settings.private': 'Private',
   'settings.category': 'Category',
@@ -438,6 +456,16 @@ const es: Partial<Record<TranslationKey, string>> = {
   'saved.savedFrom': 'Guardado {when} · de "{query}"',
 
   'settings.title': 'Ajustes',
+  'settings.regionGroup': 'Región, idioma y moneda',
+  'settings.regionGroupIntro':
+    'Tres ajustes independientes. La región decide qué se busca y cómo se cobran las comisiones; el idioma cambia solo las palabras en pantalla; la moneda depende de la región.',
+  'settings.region': 'Región de eBay',
+  'settings.regionHint':
+    'Qué sitio de eBay se busca. También fija el país de envío, las reglas de comisiones y la moneda.',
+  'settings.currency': 'Moneda',
+  'settings.currencyHint':
+    'Depende de la región, porque los precios llegan de eBay ya en esa moneda. Mostrarlos en otra requeriría un tipo de cambio que esta aplicación no tiene, y convertir sin él sería inventar cifras.',
+  'settings.currencyFixed': 'la fija la región',
   'settings.marketplace': 'Mercado',
   'settings.marketplaceIntro':
     'Qué sitio de eBay se busca y se valora. Las comisiones, la moneda y el envío dependen de esta elección.',
@@ -451,6 +479,14 @@ const es: Partial<Record<TranslationKey, string>> = {
   'settings.howYouSellIntro':
     'Esto decide qué comisiones de eBay se descuentan de tu cobro. Particular es la opción por defecto, porque en el Reino Unido los particulares no pagan comisión por venta en ventas nacionales.',
   'settings.sellerType': 'Tipo de vendedor',
+  'settings.hint.private.EBAY_GB':
+    'Sin comisiones de venta en ventas nacionales elegibles desde el 1 de octubre de 2024. La comisión de Protección al Comprador la paga el comprador, así que nunca se descuenta aquí. Las categorías con autenticación y las ventas internacionales sí tienen comisión.',
+  'settings.hint.private.EBAY_ES':
+    'Los vendedores particulares en España SÍ pagan comisión por venta: la exención del Reino Unido no se aplica aquí. También hay una tarifa por pedido y una tarifa regulatoria, y los porcentajes indicados ya incluyen el IVA.',
+  'settings.hint.business.EBAY_GB':
+    'Una comisión por venta según categoría, una tarifa por pedido, una tarifa regulatoria del 0,35% y un 20% de IVA sobre todas ellas.',
+  'settings.hint.business.EBAY_ES':
+    'Una comisión por venta según categoría, una tarifa por pedido, una tarifa regulatoria del 0,35% y un 21% de IVA sobre todas ellas.',
   'settings.business': 'Profesional',
   'settings.private': 'Particular',
   'settings.category': 'Categoría',

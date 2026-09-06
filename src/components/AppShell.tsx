@@ -141,6 +141,7 @@ export default function AppShell() {
           opportunity,
           scanner.analysis?.query ?? query,
           scanner.analysis?.reference?.evidence.strength ?? 'limited',
+          preferences.value.marketplaceId,
         ),
       );
     },

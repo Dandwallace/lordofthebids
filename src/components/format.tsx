@@ -8,7 +8,7 @@
  * could not be computed is not 0%.
  */
 
-import { formatMoney, formatPercent } from '@/lib/money/money';
+import { formatMoney, formatPercent, type MoneyFormat } from '@/lib/money/money';
 import { useLocale } from '@/lib/i18n/context';
 import type { Opportunity } from '@/lib/market/analyse';
 
@@ -19,12 +19,25 @@ export { formatMoney, formatPercent };
  * format from context rather than passing it down means a price cannot be
  * shown in the wrong currency by forgetting a prop.
  */
-export function Money({ pence, whole = false }: { pence: number | null | undefined; whole?: boolean }) {
+export function Money({
+  pence,
+  whole = false,
+  format,
+}: {
+  pence: number | null | undefined;
+  whole?: boolean;
+  /**
+   * Overrides the active region's currency. Needed for figures that
+   * belong to a different market than the one currently selected, such
+   * as a saved item captured while another region was active.
+   */
+  format?: MoneyFormat;
+}) {
   const { money } = useLocale();
   if (pence === null || pence === undefined || !Number.isFinite(pence)) {
     return <span className="unknown">—</span>;
   }
-  return <span className="num">{formatMoney(pence, whole, money)}</span>;
+  return <span className="num">{formatMoney(pence, whole, format ?? money)}</span>;
 }
 
 export function Percent({ ratio, decimals = 0 }: { ratio: number | null | undefined; decimals?: number }) {

@@ -11,6 +11,8 @@
 import { isStale, STATUS_LABELS, type SavedItem, type SavedStatus } from '@/lib/store/saved';
 import { IconExternal, IconImage, IconInfo, IconRefresh, IconWarning } from './Brand';
 import { Money, Percent, formatDateTime } from './format';
+import { useLocale } from '@/lib/i18n/context';
+import { marketplace } from '@/lib/ebay/marketplaces';
 
 interface Props {
   items: SavedItem[];
@@ -34,6 +36,12 @@ function SavedRow({
   onRefresh: (item: SavedItem) => void;
   refreshing: boolean;
 }) {
+  const { t, site } = useLocale();
+  // The snapshot is in the currency of the market it was saved from, not
+  // whichever region is selected now.
+  const itemSite = marketplace(item.marketplaceId);
+  const money = { currency: itemSite.currency, locale: itemSite.locale };
+  const otherMarket = item.marketplaceId !== site.id;
   const stale = isStale(item);
   const priceMoved =
     item.refresh?.currentItemPrice != null && item.refresh.currentItemPrice !== item.snapshot.itemPrice;
@@ -53,8 +61,16 @@ function SavedRow({
         <div className="row row--between row--wrap" style={{ alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 600, lineHeight: 1.35 }}>{item.title}</div>
-            <div className="tiny muted" style={{ marginTop: 3 }}>
-              Saved {formatDateTime(item.savedAt)} · from &ldquo;{item.query}&rdquo;
+            <div className="row row--wrap" style={{ gap: 6, marginTop: 4 }}>
+              <span className={`badge ${otherMarket ? 'badge--caution' : 'badge--neutral'}`}>
+                {itemSite.country} · {itemSite.currency}
+              </span>
+              <span className="tiny muted">
+                {t('saved.savedFrom', {
+                  when: formatDateTime(item.savedAt, site.locale),
+                  query: item.query,
+                })}
+              </span>
             </div>
           </div>
 
@@ -66,7 +82,7 @@ function SavedRow({
                 aria-pressed={item.status === status}
                 onClick={() => onPatch(item.id, { status })}
               >
-                {STATUS_LABELS[status]}
+                {t(`saved.${status}` as 'saved.interested')}
               </button>
             ))}
           </div>
@@ -77,13 +93,13 @@ function SavedRow({
           <div>
             <div className="figure__label">Price then</div>
             <div className="figure__value">
-              <Money pence={item.snapshot.itemPrice} />
+              <Money pence={item.snapshot.itemPrice} format={money} />
             </div>
           </div>
           <div>
             <div className="figure__label">Profit then</div>
             <div className={`figure__value ${item.snapshot.profit >= 0 ? 'positive' : 'negative'}`}>
-              <Money pence={item.snapshot.profit} />
+              <Money pence={item.snapshot.profit} format={money} />
             </div>
           </div>
           <div>
@@ -95,7 +111,7 @@ function SavedRow({
           <div>
             <div className="figure__label">Max price</div>
             <div className="figure__value">
-              <Money pence={item.snapshot.maxItemPrice > 0 ? item.snapshot.maxItemPrice : null} />
+              <Money pence={item.snapshot.maxItemPrice > 0 ? item.snapshot.maxItemPrice : null} format={money} />
             </div>
           </div>
         </div>
@@ -113,8 +129,8 @@ function SavedRow({
                     Still listed as of {formatDateTime(item.refresh.checkedAt)}.{' '}
                     {priceMoved ? (
                       <>
-                        Price is now <Money pence={item.refresh.currentItemPrice} />, was{' '}
-                        <Money pence={item.snapshot.itemPrice} />.
+                        Price is now <Money pence={item.refresh.currentItemPrice} format={money} />, was{' '}
+                        <Money pence={item.snapshot.itemPrice} format={money} />.
                       </>
                     ) : (
                       'Price unchanged.'
@@ -135,7 +151,7 @@ function SavedRow({
           <div className="row" style={{ marginTop: 10 }}>
             <span className="badge badge--caution">
               <IconWarning size={11} />
-              Assessment may be out of date
+              {t('saved.stale')}
             </span>
           </div>
         ) : null}
@@ -147,7 +163,7 @@ function SavedRow({
           <textarea
             id={`note-${item.id}`}
             className="saved-item__note"
-            placeholder="Your notes: what to check, what you offered, why you passed…"
+            placeholder={t('saved.notePlaceholder')}
             value={item.note}
             onChange={(event) => onPatch(item.id, { note: event.target.value })}
           />
@@ -161,15 +177,15 @@ function SavedRow({
             disabled={refreshing}
           >
             {refreshing ? <span className="spinner spinner--dark" aria-hidden="true" /> : <IconRefresh size={14} />}
-            {refreshing ? 'Checking' : 'Refresh'}
+            {refreshing ? t('saved.checking') : t('saved.refresh')}
           </button>
           <a className="btn btn--secondary btn--small" href={item.url} target="_blank" rel="noopener noreferrer">
             <IconExternal size={14} />
-            Open on eBay
+            {t('results.openEbay')}
           </a>
           <span className="spacer" />
           <button type="button" className="btn btn--ghost btn--small" onClick={() => onRemove(item.id)}>
-            Remove
+            {t('saved.remove')}
           </button>
         </div>
       </div>
@@ -178,17 +194,15 @@ function SavedRow({
 }
 
 export default function SavedView({ items, persists, onPatch, onRemove, onRefresh, refreshingId }: Props) {
+  const { t } = useLocale();
   if (items.length === 0) {
     return (
       <div className="card">
         <div className="empty">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/saved-empty.webp" alt="" width={520} height={520} />
-          <h3>Nothing saved yet</h3>
-          <p className="secondary-text">
-            When a listing looks worth a second look, save it. You can add notes, mark it Interested,
-            Purchased or Passed, and re-check the price later.
-          </p>
+          <h3>{t('saved.empty')}</h3>
+          <p className="secondary-text">{t('saved.emptyBody')}</p>
         </div>
       </div>
     );
@@ -205,7 +219,8 @@ export default function SavedView({ items, persists, onPatch, onRemove, onRefres
         <div className="chips">
           {(Object.keys(STATUS_LABELS) as SavedStatus[]).map((status) => (
             <span key={status} className="badge badge--neutral">
-              {STATUS_LABELS[status]} <strong className="num">{counts[status] ?? 0}</strong>
+              {t(`saved.${status}` as 'saved.interested')}{' '}
+              <strong className="num">{counts[status] ?? 0}</strong>
             </span>
           ))}
         </div>
@@ -217,11 +232,8 @@ export default function SavedView({ items, persists, onPatch, onRemove, onRefres
             <IconWarning />
           </span>
           <div>
-            <div className="notice__title">This browser is not saving your list</div>
-            <div className="notice__body">
-              Storage is blocked or full, so anything you save will disappear when you reload. Private
-              browsing windows often behave this way.
-            </div>
+            <div className="notice__title">{t('saved.notPersisting')}</div>
+            <div className="notice__body">{t('saved.notPersistingBody')}</div>
           </div>
         </div>
       ) : (
@@ -230,12 +242,8 @@ export default function SavedView({ items, persists, onPatch, onRemove, onRefres
             <IconInfo />
           </span>
           <div>
-            <div className="notice__title">Saved in this browser only</div>
-            <div className="notice__body">
-              There is no account and no server storage, so this list will not follow you to another
-              device or browser, and clearing site data will erase it. Marking something Purchased is a
-              note to yourself: it never places an order.
-            </div>
+            <div className="notice__title">{t('saved.browserOnly')}</div>
+            <div className="notice__body">{t('saved.browserOnlyBody')}</div>
           </div>
         </div>
       )}

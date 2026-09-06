@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { Opportunity } from '../market/analyse';
+import { DEFAULT_MARKETPLACE, type MarketplaceId } from '../ebay/marketplaces';
 import { readArray, storageAvailable, writeJson } from './storage';
 
 export type SavedStatus = 'interested' | 'purchased' | 'passed';
@@ -28,6 +29,13 @@ export const STATUS_LABELS: Record<SavedStatus, string> = {
  */
 export interface SavedItem {
   id: string;
+  /**
+   * The market this was found in. Stamped at save time and never
+   * reinterpreted: the snapshot below is denominated in THIS market's
+   * currency, so showing it in whichever region happens to be selected
+   * later would relabel pounds as euros without converting anything.
+   */
+  marketplaceId: MarketplaceId;
   title: string;
   url: string;
   imageUrl: string | null;
@@ -67,9 +75,15 @@ export function isStale(item: SavedItem, now = Date.now()): boolean {
   return Number.isFinite(age) && age > STALE_AFTER_DAYS * 86_400_000;
 }
 
-export function toSavedItem(opportunity: Opportunity, query: string, evidenceStrength: string): SavedItem {
+export function toSavedItem(
+  opportunity: Opportunity,
+  query: string,
+  evidenceStrength: string,
+  marketplaceId: MarketplaceId,
+): SavedItem {
   return {
     id: opportunity.id,
+    marketplaceId,
     title: opportunity.title,
     url: opportunity.url,
     imageUrl: opportunity.imageUrl,
@@ -97,7 +111,14 @@ export function useSavedItems() {
   const [persists, setPersists] = useState(true);
 
   useEffect(() => {
-    setItems(readArray<SavedItem>(KEY));
+    // Items saved before the app supported more than one market have no
+    // marketplace recorded. They can only have come from the UK.
+    setItems(
+      readArray<SavedItem>(KEY).map((item) => ({
+        ...item,
+        marketplaceId: item.marketplaceId ?? DEFAULT_MARKETPLACE,
+      })),
+    );
     setPersists(storageAvailable());
     setHydrated(true);
   }, []);
